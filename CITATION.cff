@@ -1,0 +1,21 @@
+cff-version: 1.2.0
+message: "If you use VUCP, please cite it as below."
+title: "VUCP — Vitanow Unified Context Protocol"
+version: "0.5-alpha-9.1"
+date-released: "2026-07-06"
+authors:
+  - family-names: "Vitanov"
+    given-names: "Zahari Georgiev"
+    alias: "Zahari Vitanov"
+abstract: "A portable AI workspace format for inspectable, repeatable, and safer human-AI work."
+license: "MIT"
+repository-code: "https://github.com/vitanow/vucp"
+keywords:
+  - ai
+  - llm
+  - agent-workflows
+  - context-management
+  - developer-tools
+  - filesystem
+  - prompt-engineering
+  - ai-workspace

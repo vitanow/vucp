@@ -1,0 +1,52 @@
+# Dependencies & Build
+node_modules/
+.next/
+.nuxt/
+dist/
+build/
+out/
+.output/
+vendor/
+.pnp/
+.pnp.js
+
+# Environment & Secrets
+.env
+.env.*
+*.key
+*.pem
+*.p12
+secrets/
+credentials/
+.vercel/
+.netlify/
+
+# Cache & Runtime
+.cache/
+__pycache__/
+*.pyc
+.turbo/
+.eslintcache
+.parcel-cache/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# VUCP Local Runtime
+.vucp/cache/
+.vucp/tmp/
+.vucp/transient_runs/
+
+# Large Files
+*.zip
+*.tar
+*.gz
+*.mp4
+*.mov
+
+# Database Snapshots (keep schema, not data)
+*.sql.backup
+*.dump

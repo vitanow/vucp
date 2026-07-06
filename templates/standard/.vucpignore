@@ -1,0 +1,42 @@
+# Dependencies & Environments
+node_modules/
+.venv/
+venv/
+vendor/
+
+# Build & Cache Outputs
+dist/
+build/
+target/
+.cache/
+__pycache__/
+*.pyc
+
+# IDE and Git Metadata
+.git/
+.idea/
+.vscode/
+
+# Archives & Large Material
+_archive/
+*.zip
+*.tar
+*.gz
+*.mp4
+*.mov
+*.wav
+*.psd
+
+# Secrets and Credentials
+.env
+.env.*
+*.key
+*.pem
+*.p12
+secrets/
+credentials/
+
+# Local VUCP Runtime
+.vucp/cache/
+.vucp/tmp/
+.vucp/transient_runs/

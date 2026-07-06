@@ -1,0 +1,153 @@
+version: "0.5.0"
+protocol: "VUCP"
+project: "saas-mvp-launch"
+product_id: "com.vitanow.saas-mvp-launch"
+
+entrypoints:
+  human: "START.md"
+  agent: "AGENTS.md"
+  current_state: "CURRENT.md"
+
+experience_mode: "beginner"
+
+pipeline:
+  - id: problem-validation
+    path: "stages/01-problem-validation"
+    type: "research"
+    agent: "researcher"
+    requires_review: true
+    risk_level: "low"
+    knowledge:
+      mode: "auto"
+      include_tags: ["problem", "market", "validation"]
+    outputs:
+      - "problem-statement.md"
+      - "hypothesis-list.md"
+    next:
+      approved: "customer-research"
+      rejected: "problem-validation"
+
+  - id: customer-research
+    path: "stages/02-customer-research"
+    type: "research"
+    agent: "researcher"
+    requires_review: true
+    risk_level: "low"
+    knowledge:
+      include:
+        - "_knowledge/playbooks/customer-interview.md"
+        - "_knowledge/domain/customer-research.md"
+    outputs:
+      - "interview-scripts.md"
+      - "findings-summary.md"
+      - "validated-problems.md"
+    next:
+      approved: "solution-design"
+      rejected: "customer-research"
+
+  - id: solution-design
+    path: "stages/03-solution-design"
+    type: "synthesis"
+    agent: "writer"
+    requires_review: true
+    risk_level: "medium"
+    knowledge:
+      include:
+        - "_knowledge/domain/mvp-scoping.md"
+        - "_knowledge/brand/voice.md"
+    outputs:
+      - "solution-definition.md"
+      - "mvp-features.md"
+      - "non-features.md"
+    next:
+      approved: "landing-page"
+      rejected: "solution-design"
+
+  - id: landing-page
+    path: "stages/04-landing-page"
+    type: "synthesis"
+    agent: "writer"
+    requires_review: true
+    risk_level: "medium"
+    knowledge:
+      include:
+        - "_knowledge/domain/landing-page-psychology.md"
+        - "_knowledge/playbooks/landing-page-copy.md"
+        - "_knowledge/brand/voice.md"
+    outputs:
+      - "landing-page-copy.md"
+      - "hero-section.md"
+      - "faq-section.md"
+    next:
+      approved: "waitlist-setup"
+      rejected: "landing-page"
+
+  - id: waitlist-setup
+    path: "stages/05-waitlist-setup"
+    type: "implementation"
+    agent: "operator"
+    requires_review: true
+    risk_level: "medium"
+    knowledge:
+      include:
+        - "_knowledge/playbooks/waitlist-setup.md"
+    outputs:
+      - "waitlist-strategy.md"
+      - "email-sequence.md"
+      - "setup-commands.md"
+    next:
+      approved: "mvp-scope"
+      rejected: "waitlist-setup"
+
+  - id: mvp-scope
+    path: "stages/06-mvp-scope"
+    type: "analysis"
+    agent: "researcher"
+    requires_review: true
+    risk_level: "high"
+    knowledge:
+      include:
+        - "_knowledge/domain/mvp-scoping.md"
+        - "_knowledge/domain/pricing-strategies.md"
+    outputs:
+      - "mvp-spec.md"
+      - "tech-stack.md"
+      - "timeline.md"
+    next:
+      approved: "build-launch"
+      rejected: "mvp-scope"
+
+  - id: build-launch
+    path: "stages/07-build-launch"
+    type: "implementation"
+    agent: "operator"
+    requires_review: true
+    risk_level: "high"
+    knowledge:
+      include:
+        - "_knowledge/playbooks/mvp-build-checklist.md"
+    outputs:
+      - "launch-plan.md"
+      - "deployment-checklist.md"
+    verification_required:
+      - "_verification/checklists/pre-launch.md"
+    next:
+      approved: "first-customers"
+      rejected: "build-launch"
+
+  - id: first-customers
+    path: "stages/08-first-customers"
+    type: "synthesis"
+    agent: "writer"
+    requires_review: false
+    risk_level: "medium"
+    knowledge:
+      include:
+        - "_knowledge/domain/first-customers.md"
+        - "_knowledge/domain/growth-loops.md"
+        - "_knowledge/domain/launch-tactics.md"
+    outputs:
+      - "customer-acquisition-plan.md"
+      - "growth-experiments.md"
+    next:
+      terminal: true

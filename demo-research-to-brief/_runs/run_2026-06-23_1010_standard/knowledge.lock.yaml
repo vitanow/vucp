@@ -1,0 +1,5 @@
+run_id: "run_2026-06-23_1010_standard"
+knowledge_files:
+  - path: "_knowledge/index.md"
+    sha256: "demo_hash_index"
+    last_modified: "2026-06-23T09:00:00Z"

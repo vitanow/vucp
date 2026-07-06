@@ -1,0 +1,24 @@
+name: VUCP CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: CLI version
+        run: python cli/vucp_cli_mvp.py --version
+      - name: Lint standard template
+        run: python cli/vucp_cli_mvp.py lint templates/standard --json
+      - name: Lint web-dev template
+        run: python cli/vucp_cli_mvp.py lint templates/web-dev --json
+      - name: Doctor standard template
+        run: python cli/vucp_cli_mvp.py doctor templates/standard --json
+      - name: Export adapters smoke test
+        run: python cli/vucp_cli_mvp.py export claude-md templates/standard --json

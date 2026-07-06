@@ -1,0 +1,37 @@
+# Private VUCP user context
+USER_CORE.private.md
+_user_contexts/private/
+.vucp-user/
+
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*.pfx
+~/.vucp-user/
+
+# Build and test artifacts (internal, not for repo)
+BUILD_SUMMARY*.json
+TEST_RESULTS*.json
+BRAND_READY_AUDIT.json
+*_AUDIT.json
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+dist/
+build/
+*.egg-info/
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

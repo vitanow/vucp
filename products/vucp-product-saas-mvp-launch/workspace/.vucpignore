@@ -1,0 +1,52 @@
+# Dependencies
+node_modules/
+.venv/
+venv/
+vendor/
+
+# Build outputs
+dist/
+build/
+target/
+.cache/
+__pycache__/
+*.pyc
+
+# Git and IDE state
+.git/
+.idea/
+.vscode/
+
+# Archives
+*.zip
+*.tar
+*.gz
+*.7z
+
+# Secrets
+.env
+.env.*
+*.key
+*.pem
+*.p12
+secrets/
+credentials/
+
+# Large media
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.wav
+*.mp3
+*.psd
+
+# Local VUCP runtime
+.vucp/cache/
+.vucp/tmp/
+.vucp/transient_runs/
+
+# Product-specific
+preview/
+*.mp4
+*.mov

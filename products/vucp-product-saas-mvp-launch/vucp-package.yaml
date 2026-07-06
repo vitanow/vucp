@@ -1,0 +1,69 @@
+package:
+  id: "com.vitanow.saas-mvp-launch"
+  name: "SaaS MVP Launch Kit"
+  version: "1.0.0"
+
+  author:
+    name: "Zahari Vitanov"
+    email: "zahari@vitanow.ops"
+    website: "https://vitanow.ops"
+    reputation_score: 5.0
+    total_sales: 0
+
+  description: 
+    short: "От идея до първи paying customers за 14 дни с AI оркестрация"
+    long: |
+      Пълен VUCP работен процес за валидация, изграждане и лансиране 
+      на SaaS продукт. Включва 8 етапа, 15 knowledge файла, 3 agent 
+      профила, verification assets и готови темплейти. Работи с 
+      всеки LLM — ChatGPT, Claude, Gemini, Codex, или локални модели.
+
+  target_audience:
+    - "Indie hackers"
+    - "Solo founders"
+    - "Technical product managers"
+    - "Dev teams building MVPs"
+
+  category: "business/mvp-launch"
+  tags: 
+    - "saas"
+    - "startup"
+    - "mvp"
+    - "validation"
+    - "launch"
+    - "indie-hacker"
+    - "product-market-fit"
+
+  pricing:
+    base_price: 79
+    currency: "USD"
+    license: "per-workspace"
+    updates:
+      included_months: 12
+      subscription_after: 9.99
+
+  deliverables:
+    - "Пълен VUCP workspace с 8 етапа"
+    - "15 специализирани knowledge файла"
+    - "3 agent profiles (Researcher, Writer, Operator)"
+    - "4 verification checklists"
+    - "2 готови темплейта (landing page, email sequence)"
+    - "Sample данни за customer interviews"
+    - "1 onboarding call (при 5+ звездни ревюта)"
+
+  requirements:
+    min_vucp_version: "0.5.0"
+    recommended_tools: ["vucp-cli", "vitanow-dashboard"]
+    optional_integrations: ["stripe", "notion", "github", "mailchimp"]
+
+  risk_level: "medium"
+
+  metrics:
+    estimated_time_saved: "60 hours"
+    average_completion_rate: "70%"
+    average_user_rating: 0.0
+
+  support:
+    discord: "https://discord.gg/vitanow"
+    email: "support@vitanow.ops"
+    response_time: "48 hours"

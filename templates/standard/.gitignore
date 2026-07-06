@@ -1,0 +1,50 @@
+# Copy this file to your project root when using a VUCP template.
+
+# Private VUCP user context — never commit filled personal files
+USER_CORE.private.md
+_user_contexts/private/
+.vucp-user/
+
+# VUCP local runtime
+.vucp/cache/
+.vucp/tmp/
+.vucp/transient_runs/
+
+# Environment & secrets
+.env
+.env.*
+*.key
+*.pem
+*.p12
+secrets/
+credentials/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Node
+node_modules/
+
+# Build outputs
+dist/
+build/
+out/
+.cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build and test artifacts
+BUILD_SUMMARY*.json
+TEST_RESULTS*.json
+*_AUDIT.json

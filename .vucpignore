@@ -1,0 +1,66 @@
+# VUCP Root Repository — Context Filter
+
+# Version control internals
+.git/
+
+# IDE and editor artifacts
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Node / Python environments
+node_modules/
+.venv/
+venv/
+.env
+.env.*
+
+# Build artifacts
+dist/
+build/
+out/
+.cache/
+__pycache__/
+*.pyc
+*.pyo
+
+# Secrets and credentials
+*.key
+*.pem
+*.p12
+credentials/
+secrets/
+
+# Archives (do not load into agent context)
+*.zip
+*.tar
+*.tar.gz
+*.gz
+
+# VUCP local runtime (never in Git)
+.vucp/cache/
+.vucp/tmp/
+.vucp/transient_runs/
+
+# Private user identity files (never commit filled-in versions)
+USER_CORE.private.md
+_user_contexts/private/
+
+# OS artifacts
+.DS_Store
+Thumbs.db
+
+# VUCP root context ignore file
+# Controls what agents and VUCP tools should ignore when scanning this repository.
+# Git / IDE
+# Dependencies / environments
+vendor/
+# Build / cache outputs
+target/
+# Archives and generated packages
+*.7z
+# Local VUCP runtime
+# Private user context safety
+.vucp-user/
+~/.vucp-user/

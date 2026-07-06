@@ -1,0 +1,9 @@
+flowchart TD
+  research["research\nagent: researcher\nrisk: low"]
+  drafting["drafting\nagent: writer\nrisk: medium"]
+  review["review\nagent: reviewer\nrisk: low"]
+  research -->|approved| drafting
+  research -->|rejected| research
+  drafting -->|approved| review
+  drafting -->|rejected| drafting
+  review --> terminal_review(["END"])

@@ -1,0 +1,104 @@
+version: "0.4.1"
+protocol: "VUCP"
+project: "<project-slug>"
+
+entrypoints:
+  human: "START.md"
+  agent: "AGENTS.md"
+  current_state: "CURRENT.md"
+
+pipeline:
+  - id: context-load
+    path: "stages/01-context-load"
+    type: "research"
+    agent: "developer"
+    requires_review: false
+    risk_level: "low"
+    knowledge:
+      include:
+        - "_knowledge/architecture/system-overview.md"
+        - "_knowledge/architecture/database-schema.md"
+        - "_knowledge/patterns/component-structure.md"
+    outputs:
+      - "session-brief.md"
+    next:
+      ready: "plan"
+
+  - id: plan
+    path: "stages/02-plan"
+    type: "synthesis"
+    agent: "architect"
+    requires_review: true
+    risk_level: "low"
+    knowledge:
+      include:
+        - "_knowledge/architecture/api-contracts.md"
+        - "_knowledge/decisions/"
+    outputs:
+      - "implementation-plan.md"
+    next:
+      approved: "implement"
+      rejected: "plan"
+
+  - id: implement
+    path: "stages/03-implement"
+    type: "implementation"
+    agent: "developer"
+    requires_review: true
+    risk_level: "medium"
+    knowledge:
+      include:
+        - "_knowledge/patterns/"
+        - "_delta/ERRORS.md"
+    outputs:
+      - "code-changes.md"
+      - "files-changed.md"
+    next:
+      approved: "test"
+      rejected: "implement"
+
+  - id: test
+    path: "stages/04-test"
+    type: "verification"
+    agent: "developer"
+    requires_review: true
+    risk_level: "medium"
+    knowledge:
+      include:
+        - "_knowledge/patterns/testing-patterns.md"
+    outputs:
+      - "test-results.md"
+    next:
+      approved: "review"
+      rejected: "implement"
+
+  - id: review
+    path: "stages/05-review"
+    type: "review"
+    agent: "reviewer"
+    requires_review: false
+    risk_level: "low"
+    knowledge:
+      include:
+        - "_knowledge/patterns/"
+        - "_knowledge/architecture/system-overview.md"
+        - "SAFEGUARDS.md"
+    outputs:
+      - "review-log.md"
+    next:
+      approved: "deploy-prep"
+      rejected: "implement"
+
+  - id: deploy-prep
+    path: "stages/06-deploy-prep"
+    type: "delivery"
+    agent: "operator"
+    requires_review: true
+    risk_level: "high"
+    knowledge:
+      include:
+        - "_knowledge/architecture/infra.md"
+        - "SAFEGUARDS.md"
+    outputs:
+      - "deploy-checklist.md"
+      - "rollback-plan.md"

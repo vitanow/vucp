@@ -1,0 +1,3 @@
+# Optional but recommended.
+# The CLI has a fallback YAML parser, but PyYAML gives full MANIFEST.yaml compatibility.
+pyyaml>=6.0

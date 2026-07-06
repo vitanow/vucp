@@ -1,0 +1,50 @@
+version: "0.4.1"
+protocol: "VUCP"
+project: "unnamed-vucp-project"
+
+entrypoints:
+  human: "START.md"
+  agent: "AGENTS.md"
+  current_state: "CURRENT.md"
+
+pipeline:
+  - id: research
+    path: "stages/research"
+    type: "research"
+    agent: "researcher"
+    requires_review: true
+    risk_level: "low"
+    knowledge:
+      mode: "auto"
+    outputs:
+      - "findings.md"
+    next:
+      approved: "drafting"
+      rejected: "research"
+
+  - id: drafting
+    path: "stages/drafting"
+    type: "synthesis"
+    agent: "writer"
+    requires_review: true
+    risk_level: "medium"
+    knowledge:
+      include:
+        - "_knowledge/brand/voice.md"
+    outputs:
+      - "draft.md"
+    next:
+      approved: "review"
+      rejected: "drafting"
+
+  - id: review
+    path: "stages/review"
+    type: "review"
+    agent: "reviewer"
+    requires_review: false
+    risk_level: "low"
+    knowledge:
+      include:
+        - "_knowledge/policies/safety.md"
+    outputs:
+      - "review_log.md"

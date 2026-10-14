@@ -133,11 +133,18 @@ def extract_frontmatter_fields(path:Path)->Dict[str,str]:
     if not text.startswith("---"): return fields
     parts=text.split("---",2)
     if len(parts)<3: return fields
+    last=None
     for raw in parts[1].splitlines():
         line=raw.strip()
+        # YAML block list item ("  - value") belongs to the previous key; store comma-joined.
+        if line.startswith("- ") and last is not None and raw[:1] in (" ","\t","-"):
+            item=line[2:].strip().strip("\"").strip("'")
+            fields[last]=f"{fields[last]}, {item}" if fields[last] else item
+            continue
         if not line or line.startswith("#") or ":" not in line: continue
         k,v=line.split(":",1)
-        fields[k.strip()]=v.strip().strip("\"").strip("'")
+        last=k.strip()
+        fields[last]=v.strip().strip("\"").strip("'")
     return fields
 
 def is_valid_stage_folder_name(name:str)->bool:
@@ -981,6 +988,16 @@ def parse_frontmatter_list(value:str)->List[str]:
     v=value.strip().strip('[]')
     return [x.strip().strip('"').strip("'") for x in v.split(',') if x.strip()]
 
+def pattern_tag_matches(meta:dict, tags:List[str])->int:
+    hay=[]
+    for k in ["tags","applies_to","source_projects"]:
+        val=meta.get(k,"")
+        if isinstance(val,list): hay += [str(v) for v in val]
+        elif isinstance(val,str): hay += parse_frontmatter_list(val)
+    h={x.lower() for x in hay}
+    return sum(1 for t in tags if t.lower() in h)
+
+
 def pattern_score(meta:dict, tags:List[str])->int:
     score=0
     hay=[]
@@ -1000,8 +1017,25 @@ def pattern_score(meta:dict, tags:List[str])->int:
 
 
 
+def is_example_entry(item:dict, block:str)->bool:
+    # Template schema/example entries use "a|b|c" placeholders or explicit example: true.
+    if re.search(r"^\s*example:\s*true\s*$", block, re.I|re.M): return True
+    return any("|" in str(item.get(k,"")) for k in ["action_class","risk_level","human_approval"])
+
+
+def current_autopilot_mode(root:Path)->str:
+    ap=root/"AUTOPILOT.md"
+    if ap.exists():
+        m=re.search(r"mode:\s*(SILENT|SURFACE|GUIDED)",read_text_safe(ap),re.I)
+        if m: return m.group(1).upper()
+    return "NOT SET"
+
+
 def extract_autopilot_entries(text:str)->List[dict]:
     entries=[]
+    # Ignore the documented schema section; real entries live under "## Entries".
+    m=re.search(r"^##\s+Entries\s*$", text, re.M)
+    if m and re.search(r"^##\s+Schema\s*$", text[:m.start()], re.M): text=text[m.end():]
     for block in re.split(r"\n---\s*\n", text):
         if "autopilot_action" not in block and "action_class:" not in block:
             continue
@@ -1014,7 +1048,7 @@ def extract_autopilot_entries(text:str)->List[dict]:
             k=k.strip(); v=v.strip().strip('"').strip("'")
             if k in ["type","actor","autopilot_mode","action_class","risk_level","confidence","human_approval","summary","why_it_matters","created_at"]:
                 item[k]=v
-        if item.get("type")=="autopilot_action" or item.get("action_class"):
+        if (item.get("type")=="autopilot_action" or item.get("action_class")) and not is_example_entry(item, block):
             entries.append(item)
     return entries
 
@@ -1064,10 +1098,11 @@ autopilot_log: "_delta/AUTOPILOT_LOG.md"
                 for e in extract_autopilot_entries(read_text_safe(log_file)):
                     e.setdefault("source", str(log_file))
                     entries.append(e)
-        payload={"ok":True,"command":"autopilot","subcommand":"audit","path":str(root),"count":len(entries),"entries":entries[:50]}
+        payload={"ok":True,"command":"autopilot","subcommand":"audit","path":str(root),"current_mode":current_autopilot_mode(root),"count":len(entries),"entries":entries[:50]}
         if args.json:
             out_json(payload)
         else:
+            print(f"Current autopilot mode: {current_autopilot_mode(root)}")
             print(f"Structured autopilot actions: {len(entries)}")
             if not entries:
                 print("No structured autopilot actions recorded yet.")
@@ -1111,14 +1146,15 @@ def patterns(args)->int:
             seen.add(md)
             meta=extract_frontmatter_fields(md)
             if str(meta.get("status","")).lower()!="confirmed" and not args.include_candidates: continue
+            if tags and pattern_tag_matches(meta,tags)==0: continue
             sc=pattern_score(meta,tags)
-            if sc>0 or not tags:
-                candidates.append({"path":str(md),"score":sc,"title":md.stem,"status":meta.get("status",""),"confidence":meta.get("confidence",""),"tags":meta.get("tags",""),"applies_to":meta.get("applies_to","")})
+            candidates.append({"path":str(md),"score":sc,"title":md.stem,"status":meta.get("status",""),"confidence":meta.get("confidence",""),"tags":meta.get("tags",""),"applies_to":meta.get("applies_to","")})
     candidates=sorted(candidates,key=lambda x:x["score"],reverse=True)[:maxn]
     payload={"ok":True,"command":"patterns","path":str(root),"tags":tags,"count":len(candidates),"patterns":candidates}
     if args.json: out_json(payload)
     else:
         print(f"Selected {len(candidates)} cross-project pattern(s)")
+        if tags and not candidates: print(f"No patterns match tags: {', '.join(tags)}")
         for c in candidates: print(f"- {c['title']} ({c['confidence']}) [{c['path']}]")
     return EXIT_SUCCESS
 

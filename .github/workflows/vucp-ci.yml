@@ -7,11 +7,15 @@ on:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.9', '3.11', '3.13']
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: ${{ matrix.python-version }}
       - name: CLI version
         run: python cli/vucp_cli_mvp.py --version
       - name: Lint standard template

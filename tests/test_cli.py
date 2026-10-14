@@ -219,3 +219,87 @@ def test_does_not_apply_to_excludes_matching_pattern(tmp_path):
 
 def test_does_not_apply_to_wins_over_positive_match(tmp_path):
     assert excl_titles(tmp_path, "deployment,production") == ["other"]
+
+
+# --- VUCP Lite ---
+
+def init_lite(tmp_path):
+    ws = tmp_path / "lite"
+    r = run("init", ws, "--lite", "--project", "Demo", "--owner", "Tester")
+    assert r.returncode == 0, r.stderr
+    return ws
+
+
+def test_lite_init_creates_exactly_three_files(tmp_path):
+    ws = init_lite(tmp_path)
+    found = sorted(str(p.relative_to(ws)) for p in ws.rglob("*") if p.is_file() or p.is_dir())
+    assert found == ["AGENTS.md", "CURRENT.md", "LEARNINGS.md"]
+    assert "vucp_mode: lite" in (ws / "AGENTS.md").read_text()
+    assert "Demo" in (ws / "CURRENT.md").read_text()
+
+
+def test_lite_lint_and_doctor_clean(tmp_path):
+    ws = init_lite(tmp_path)
+    lint = json.loads(run("lint", ws, "--json").stdout)
+    assert lint["mode"] == "lite" and lint["errors"] == 0 and lint["warnings"] == 0
+    doc = json.loads(run("doctor", ws, "--json").stdout)
+    assert doc["mode"] == "lite" and doc["errors"] == 0 and doc["warnings"] == 0
+
+
+def test_lite_lint_reports_missing_file(tmp_path):
+    ws = init_lite(tmp_path)
+    (ws / "LEARNINGS.md").unlink()
+    r = run("lint", ws, "--json")
+    data = json.loads(r.stdout)
+    assert r.returncode == 1 and data["mode"] == "lite"
+    assert [i["path"] for i in data["issues"]] == ["LEARNINGS.md"]
+
+
+def test_lite_long_file_warning(tmp_path):
+    ws = init_lite(tmp_path)
+    with (ws / "LEARNINGS.md").open("a") as f:
+        f.write("x" * 9000)
+    data = json.loads(run("doctor", ws, "--json").stdout)
+    assert "LITE_FILE_TOO_LONG" in [i["code"] for i in data["issues"]]
+
+
+def test_lite_export(tmp_path):
+    ws = init_lite(tmp_path)
+    assert run("export", "claude-md", ws).returncode == 0
+    assert run("export", "agents-md", ws).returncode == 0
+    claude = (ws / "_publish/adapters/claude/CLAUDE.md").read_text()
+    assert claude.startswith("# CLAUDE.md") and "## Learnings" in claude and "Demo" in claude
+    assert "VUCP Lite" in (ws / "_publish/adapters/AGENTS.generated.md").read_text()
+
+
+def test_lite_template_matches_cli(tmp_path):
+    mod = load_cli_module()
+    rendered = mod.lite_files("<PROJECT_NAME>", "<OWNER_NAME>", "<YYYY-MM-DD>")
+    for name in ["AGENTS.md", "CURRENT.md", "LEARNINGS.md"]:
+        assert rendered[name] == (REPO / "templates/lite" / name).read_text()
+
+
+def test_lite_template_token_budget():
+    # Rough budget: ~1500 tokens is about 1100 words; keep a wide margin.
+    words = sum(len((REPO / "templates/lite" / n).read_text().split()) for n in ["AGENTS.md", "CURRENT.md", "LEARNINGS.md"])
+    assert words < 600
+
+
+def test_lite_upgrade_non_destructive(tmp_path):
+    ws = init_lite(tmp_path)
+    (ws / "CURRENT.md").write_text("# my state\n")
+    (ws / "LEARNINGS.md").write_text("# my learnings\n")
+    assert run("upgrade", ws, "--dry-run").returncode == 0
+    assert not (ws / "MANIFEST.yaml").exists()
+    assert run("upgrade", ws).returncode == 0
+    assert (ws / "CURRENT.md").read_text() == "# my state\n"
+    assert (ws / "LEARNINGS.md").read_text() == "# my learnings\n"
+    assert (ws / "_delta/LEARNINGS.md").read_text() == "# my learnings\n"
+    lint = json.loads(run("lint", ws, "--json").stdout)
+    assert lint["mode"] == "full" and lint["errors"] == 0
+    assert run("upgrade", ws).returncode == 1  # already full
+
+
+def test_full_workspace_not_detected_as_lite(tmp_path):
+    ws = init_ws(tmp_path)
+    assert json.loads(run("lint", ws, "--json").stdout)["mode"] == "full"

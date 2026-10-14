@@ -99,3 +99,68 @@ def test_audit_counts_real_entry(tmp_path):
     data = json.loads(run("autopilot", "audit", ws, "--json").stdout)
     assert data["count"] == 1
     assert data["entries"][0]["summary"] == "Updated CURRENT.md"
+
+
+# --- tag semantics (fixture library for deterministic results) ---
+
+def make_library(tmp_path):
+    lib = tmp_path / "lib"
+    lib.mkdir()
+    specs = {
+        # name: (tags, confidence)
+        "alpha": (["cli", "safety"], "0.50"),
+        "beta": (["cli"], "0.99"),
+        "gamma": (["safety"], "0.70"),
+        "delta": (["design"], "0.90"),
+    }
+    for name, (tags, conf) in specs.items():
+        body = "---\ntype: cross_project_pattern\nstatus: confirmed\nconfidence: " + conf + "\ntags:\n"
+        body += "".join(f"  - {t}\n" for t in tags) + "---\n# " + name + "\n"
+        (lib / f"{name}.md").write_text(body)
+    return lib
+
+
+def lib_patterns(tmp_path, tags):
+    ws = init_ws(tmp_path)
+    lib = make_library(tmp_path)
+    r = run("patterns", ws, "--patterns", lib, "--tags", tags, "--json")
+    assert r.returncode == 0, r.stderr
+    return json.loads(r.stdout)
+
+
+def titles(data):
+    return [p["title"] for p in data["patterns"]]
+
+
+def test_tags_case_insensitive(tmp_path):
+    assert sorted(titles(lib_patterns(tmp_path, "CLI"))) == ["alpha", "beta"]
+
+
+def test_tags_whitespace_trimmed(tmp_path):
+    data = lib_patterns(tmp_path, " cli , safety ")
+    assert data["tags"] == ["cli", "safety"]
+    assert sorted(titles(data)) == ["alpha", "beta", "gamma"]
+
+
+def test_tags_empty_entries_ignored(tmp_path):
+    assert lib_patterns(tmp_path, "cli,,  ,")["tags"] == ["cli"]
+
+
+def test_tags_or_union_ranked_by_matches(tmp_path):
+    data = lib_patterns(tmp_path, "cli,safety")
+    t = titles(data)
+    assert set(t) == {"alpha", "beta", "gamma"}
+    # alpha matches 2 tags, so it ranks first despite the lowest confidence
+    assert t[0] == "alpha"
+    assert data["patterns"][0]["matched_tags"] == 2
+    assert all(p["matched_tags"] == 1 for p in data["patterns"][1:])
+
+
+def test_tags_all_nonmatching_multi_returns_zero(tmp_path):
+    assert lib_patterns(tmp_path, "foo,bar,baz")["count"] == 0
+
+
+def test_tags_empty_string_means_no_filter(tmp_path):
+    data = lib_patterns(tmp_path, "")
+    assert data["tags"] == []
+    assert sorted(titles(data)) == ["alpha", "beta", "delta", "gamma"]

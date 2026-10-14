@@ -995,7 +995,8 @@ def pattern_tag_matches(meta:dict, tags:List[str])->int:
         if isinstance(val,list): hay += [str(v) for v in val]
         elif isinstance(val,str): hay += parse_frontmatter_list(val)
     h={x.lower() for x in hay}
-    return sum(1 for t in tags if t.lower() in h)
+    h={x.strip().lower() for x in h}
+    return sum(1 for t in tags if t.strip().lower() in h)
 
 
 def pattern_score(meta:dict, tags:List[str])->int:
@@ -1123,7 +1124,10 @@ def patterns(args)->int:
     root=norm(args.path)
     ws=workspace_frontmatter(root)
     p_arg=args.patterns or ws.get("cross_project_patterns","")
-    tags=[t.strip() for t in (args.tags or ws.get("user_context","")).split(',') if t.strip()]
+    # Tag semantics: OR, case-insensitive, trimmed, empty entries ignored, de-duplicated.
+    # An explicit --tags "" means no filter; omitted --tags falls back to user_context.
+    raw_tags=args.tags if args.tags is not None else ws.get("user_context","")
+    tags=list(dict.fromkeys(t.strip().lower() for t in raw_tags.split(',') if t.strip()))
     maxn=int(args.max or ws.get("max_cross_project_patterns","5") or 5)
     candidates=[]
     search_roots=[]
@@ -1148,8 +1152,8 @@ def patterns(args)->int:
             if str(meta.get("status","")).lower()!="confirmed" and not args.include_candidates: continue
             if tags and pattern_tag_matches(meta,tags)==0: continue
             sc=pattern_score(meta,tags)
-            candidates.append({"path":str(md),"score":sc,"title":md.stem,"status":meta.get("status",""),"confidence":meta.get("confidence",""),"tags":meta.get("tags",""),"applies_to":meta.get("applies_to","")})
-    candidates=sorted(candidates,key=lambda x:x["score"],reverse=True)[:maxn]
+            candidates.append({"path":str(md),"matched_tags":pattern_tag_matches(meta,tags),"score":sc,"title":md.stem,"status":meta.get("status",""),"confidence":meta.get("confidence",""),"tags":meta.get("tags",""),"applies_to":meta.get("applies_to","")})
+    candidates=sorted(candidates,key=lambda x:(x["matched_tags"],x["score"]),reverse=True)[:maxn]
     payload={"ok":True,"command":"patterns","path":str(root),"tags":tags,"count":len(candidates),"patterns":candidates}
     if args.json: out_json(payload)
     else:
@@ -1163,6 +1167,31 @@ def cmd_help(c:str)->str:
     if c=="init": return """\nUsage:\n  vucp init <path> [--project NAME] [--owner NAME] [--language bg|en] [--force] [--json]\n\nCreates a Standard VUCP workspace.\n\nExamples:\n  python vucp_cli_mvp.py init my-project\n  python vucp_cli_mvp.py init my-project --project \"My Project\" --owner \"Zahari\"\n\nSafety:\n  Refuses to write into a non-empty folder unless --force is used.\n\nExit codes:\n  0 success\n  2 invalid arguments\n  3 filesystem error\n"""
     if c=="lint": return """\nUsage:\n  vucp lint <path> [--json]\n\nValidates a VUCP workspace structure.\n\nExamples:\n  python vucp_cli_mvp.py lint my-project\n  python vucp_cli_mvp.py lint my-project --json\n\nExit codes:\n  0 success\n  1 validation failed\n  2 invalid arguments\n"""
     if c=="graph": return """\nUsage:\n  vucp graph <path> [--output PATH] [--json]\n\nGenerates Mermaid workflow graph from MANIFEST.yaml.\n\nExamples:\n  python vucp_cli_mvp.py graph my-project\n  python vucp_cli_mvp.py graph my-project --output _publish/workflow.mmd\n\nExit codes:\n  0 success\n  1 validation failed\n  2 invalid arguments\n  3 filesystem error\n"""
+    if c=="patterns": return """
+Usage:
+  vucp patterns <path> [--patterns PATH] [--tags a,b,c] [--max N] [--include-candidates] [--json]
+
+Selects relevant cross-project patterns.
+
+Tag semantics:
+  - Multiple tags use OR: a pattern is selected if it matches ANY tag.
+  - A pattern's tags, applies_to and source_projects are matched.
+  - Matching is case-insensitive and whitespace-trimmed ("CLI" == " cli ").
+  - Empty entries are ignored ("cli,,safety" == "cli,safety").
+  - Results are ranked by number of matched tags, then by score
+    (confirmed status, confidence).
+  - If no pattern matches, 0 results are returned (exit 0).
+  - --tags "" (or only separators) means no tag filter.
+  - If --tags is omitted, user_context from WORKSPACE.md is used as tags.
+
+Examples:
+  python vucp_cli_mvp.py patterns my-project --tags cli,safety
+  python vucp_cli_mvp.py patterns my-project --tags "CLI, deployment" --json
+
+Exit codes:
+  0 success
+  2 invalid arguments
+"""
     if c=="autopilot": return """
 Usage:
   vucp autopilot [status|set|audit] <path> [--mode SILENT|SURFACE|GUIDED] [--json]

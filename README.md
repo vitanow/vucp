@@ -107,6 +107,8 @@ python cli/vucp_cli_mvp.py dream my-project --write
 python cli/vucp_cli_mvp.py patterns my-project --patterns templates/user/_cross_project_patterns --tags cli,safety
 ```
 
+`patterns --tags` semantics: multiple tags use OR (a pattern matches if any tag matches its `tags`, `applies_to` or `source_projects`); matching is case-insensitive and whitespace-trimmed; empty entries are ignored. Results are ranked by number of matched tags, then by confirmed status and confidence. No match returns 0 patterns. `--tags ""` means no tag filter; omitting `--tags` uses `user_context` from `WORKSPACE.md`.
+
 Change Autopilot mode:
 
 ```bash

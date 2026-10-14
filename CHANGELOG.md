@@ -9,6 +9,10 @@
 - `autopilot audit` no longer counts the documented schema/example entry in `_delta/AUTOPILOT_LOG.md` (placeholders like `read|write|...`, the `## Schema` section, or `example: true`).
 - `autopilot audit` now reports `current_mode` read from `AUTOPILOT.md`.
 
+### Changed
+
+- Defined `patterns --tags` semantics: OR across tags, case-insensitive, whitespace-trimmed, empty entries ignored, duplicates removed. Results ranked by number of matched tags, then score; JSON includes `matched_tags`. An explicit `--tags ""` means no filter (previously it silently fell back to `user_context`). Documented in `patterns --help`, README, and `docs/CROSS_PROJECT_PATTERNS.md`.
+
 ### Added
 
 - `tests/test_cli.py` pytest suite (smoke tests for init/lint/doctor/export plus regression tests for both fixes).

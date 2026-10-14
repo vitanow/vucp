@@ -125,6 +125,8 @@ def parse_manifest_fallback(path:Path)->dict:
     return {"project":project,"pipeline":pipeline}
 
 
+FRONTMATTER_LIST_FIELDS={"tags","applies_to","does_not_apply_to","source_projects","semantic_aliases","cross_references"}
+
 def extract_frontmatter_fields(path:Path)->Dict[str,str]:
     """Minimal parser for YAML frontmatter in CONTEXT.md."""
     fields={}
@@ -137,7 +139,8 @@ def extract_frontmatter_fields(path:Path)->Dict[str,str]:
     for raw in parts[1].splitlines():
         line=raw.strip()
         # YAML block list item ("  - value") belongs to the previous key; store comma-joined.
-        if line.startswith("- ") and last is not None and raw[:1] in (" ","\t","-"):
+        if line.startswith("- ") and raw[:1] in (" ","\t","-"):
+            if last not in FRONTMATTER_LIST_FIELDS: continue  # e.g. inside a block scalar or unknown key
             item=line[2:].strip().strip("\"").strip("'")
             fields[last]=f"{fields[last]}, {item}" if fields[last] else item
             continue

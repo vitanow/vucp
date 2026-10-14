@@ -164,3 +164,27 @@ def test_tags_empty_string_means_no_filter(tmp_path):
     data = lib_patterns(tmp_path, "")
     assert data["tags"] == []
     assert sorted(titles(data)) == ["alpha", "beta", "delta", "gamma"]
+
+
+# --- frontmatter parser hardening ---
+
+def load_cli_module():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("vucp_cli_mvp", CLI)
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules["vucp_cli_mvp"] = mod
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def test_parser_ignores_list_items_under_unknown_key(tmp_path):
+    mod = load_cli_module()
+    f = tmp_path / "p.md"
+    f.write_text(
+        "---\ntags:\n  - design\nnotes: |\n  - cli\n  - deployment\n"
+        "does_not_apply_to:\n  - production\n---\n# p\n"
+    )
+    fields = mod.extract_frontmatter_fields(f)
+    assert fields["tags"] == "design"
+    assert fields["notes"] == "|"
+    assert fields["does_not_apply_to"] == "production"

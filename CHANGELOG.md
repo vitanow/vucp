@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased - fix/patterns-filter-and-audit-example
+
+### Fixed
+
+- `patterns --tags` now actually filters: only patterns matching at least one tag are returned; when nothing matches, the CLI prints `No patterns match tags: ...` and returns an empty list (exit 0).
+- Frontmatter parser now reads YAML block lists (`tags:` followed by `- item` lines). Previously such tags were read as empty, so tag matching never worked.
+- `autopilot audit` no longer counts the documented schema/example entry in `_delta/AUTOPILOT_LOG.md` (placeholders like `read|write|...`, the `## Schema` section, or `example: true`).
+- `autopilot audit` now reports `current_mode` read from `AUTOPILOT.md`.
+
+### Added
+
+- `tests/test_cli.py` pytest suite (smoke tests for init/lint/doctor/export plus regression tests for both fixes).
+- `requirements-dev.txt` with pytest; CI runs the test suite.
+
 
 ## 0.5-alpha-9.1 — Launch-clean Assisted Autopilot
 

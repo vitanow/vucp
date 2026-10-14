@@ -22,3 +22,7 @@ jobs:
         run: python cli/vucp_cli_mvp.py doctor templates/standard --json
       - name: Export adapters smoke test
         run: python cli/vucp_cli_mvp.py export claude-md templates/standard --json
+      - name: Install test dependencies
+        run: pip install -r requirements-dev.txt
+      - name: Run tests
+        run: python -m pytest -q tests

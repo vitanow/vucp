@@ -188,3 +188,34 @@ def test_parser_ignores_list_items_under_unknown_key(tmp_path):
     assert fields["tags"] == "design"
     assert fields["notes"] == "|"
     assert fields["does_not_apply_to"] == "production"
+
+
+# --- does_not_apply_to overrides positive matches ---
+
+def excl_library(tmp_path):
+    lib = tmp_path / "excl"
+    lib.mkdir()
+    (lib / "rollback.md").write_text(
+        "---\nstatus: confirmed\nconfidence: 0.9\ntags:\n  - deployment\n"
+        "does_not_apply_to:\n  - production\n---\n# rollback\n"
+    )
+    (lib / "other.md").write_text(
+        "---\nstatus: confirmed\nconfidence: 0.5\ntags:\n  - deployment\n---\n# other\n"
+    )
+    return lib
+
+
+def excl_titles(tmp_path, tags):
+    ws = init_ws(tmp_path)
+    r = run("patterns", ws, "--patterns", excl_library(tmp_path), "--tags", tags, "--json")
+    assert r.returncode == 0, r.stderr
+    return sorted(p["title"] for p in json.loads(r.stdout)["patterns"])
+
+
+def test_does_not_apply_to_excludes_matching_pattern(tmp_path):
+    assert excl_titles(tmp_path, "deployment") == ["other", "rollback"]
+    assert excl_titles(tmp_path / "b", " PRODUCTION ") == []
+
+
+def test_does_not_apply_to_wins_over_positive_match(tmp_path):
+    assert excl_titles(tmp_path, "deployment,production") == ["other"]

@@ -1002,6 +1002,14 @@ def pattern_tag_matches(meta:dict, tags:List[str])->int:
     return sum(1 for t in tags if t.strip().lower() in h)
 
 
+def pattern_tag_excluded(meta:dict, tags:List[str])->bool:
+    # does_not_apply_to overrides positive matches (case-insensitive, trimmed).
+    val=meta.get("does_not_apply_to","")
+    items=[str(v) for v in val] if isinstance(val,list) else parse_frontmatter_list(str(val))
+    excluded={x.strip().lower() for x in items if x.strip()}
+    return any(t.strip().lower() in excluded for t in tags)
+
+
 def pattern_score(meta:dict, tags:List[str])->int:
     score=0
     hay=[]
@@ -1153,6 +1161,7 @@ def patterns(args)->int:
             seen.add(md)
             meta=extract_frontmatter_fields(md)
             if str(meta.get("status","")).lower()!="confirmed" and not args.include_candidates: continue
+            if tags and pattern_tag_excluded(meta,tags): continue
             if tags and pattern_tag_matches(meta,tags)==0: continue
             sc=pattern_score(meta,tags)
             candidates.append({"path":str(md),"matched_tags":pattern_tag_matches(meta,tags),"score":sc,"title":md.stem,"status":meta.get("status",""),"confidence":meta.get("confidence",""),"tags":meta.get("tags",""),"applies_to":meta.get("applies_to","")})
@@ -1179,6 +1188,8 @@ Selects relevant cross-project patterns.
 Tag semantics:
   - Multiple tags use OR: a pattern is selected if it matches ANY tag.
   - A pattern's tags, applies_to and source_projects are matched.
+  - does_not_apply_to wins: if ANY given tag is listed in a pattern's
+    does_not_apply_to, the pattern is excluded even if other tags match.
   - Matching is case-insensitive and whitespace-trimmed ("CLI" == " cli ").
   - Empty entries are ignored ("cli,,safety" == "cli,safety").
   - Results are ranked by number of matched tags, then by score

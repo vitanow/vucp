@@ -28,6 +28,7 @@ Usage:
 
 Commands:
   init    Create a Standard VUCP workspace (--lite: 3-file mode)
+  upgrade Upgrade a Lite workspace to full mode (non-destructive)
   lint    Validate a VUCP workspace
   graph    Generate Mermaid workflow graph
   doctor   Diagnose workspace health and instruction smells
@@ -723,6 +724,30 @@ def lite_issues(root:Path)->List[dict]:
         issues.append(issue_dict("warning","CURRENT_NEXT_STEP_MISSING","CURRENT.md has no '## Next step' section.","CURRENT.md","Add the single next concrete action."))
     return issues
 
+FULL_DIRS=["_inbox/ideas","_inbox/files","_inbox/notes","_runs","_proposals/knowledge_updates","_proposals/schema_changes","_proposals/workflow_changes","_verification/checklists","_verification/tests","_verification/rollback","_publish","_archive","_attention",".vucp/cache",".vucp/tmp",".vucp/transient_runs","stages/research/input","stages/research/output","stages/drafting/input","stages/drafting/output","stages/review/input","stages/review/output"]
+
+def upgrade(args)->int:
+    # Non-destructive Lite -> full upgrade: only creates missing files, never overwrites.
+    root=norm(args.path)
+    if not root.exists(): print(f"ERROR: workspace path does not exist: {root}",file=sys.stderr); return EXIT_FILESYSTEM_ERROR
+    if not is_lite(root): print(f"ERROR: not a VUCP Lite workspace (or already full): {root}",file=sys.stderr); return EXIT_VALIDATION_FAILED
+    fm=extract_frontmatter_fields(root/"AGENTS.md")
+    project=fm.get("project") or root.name; owner=fm.get("owner") or "<OWNER_NAME>"
+    data=files(project,owner,"en"); data.update(autopilot_files(project,owner,"en"))
+    if (root/"LEARNINGS.md").exists(): data["_delta/LEARNINGS.md"]=read_text_safe(root/"LEARNINGS.md")
+    created=[rel for rel in data if not (root/rel).exists()]
+    kept=[rel for rel in data if (root/rel).exists()]
+    if not args.dry_run:
+        for rel in created: write(root/rel,data[rel])
+        for d in FULL_DIRS: keep(root/d)
+    payload={"ok":True,"command":"upgrade","path":str(root),"dry_run":bool(args.dry_run),"created":created,"kept":kept}
+    if args.json: out_json(payload)
+    else:
+        print(("Would upgrade" if args.dry_run else "Upgraded")+f" Lite -> full: {root}")
+        print(f"Created {len(created)} file(s); kept {len(kept)} existing file(s) unchanged: {', '.join(kept)}")
+        print("LEARNINGS.md was copied to _delta/LEARNINGS.md and left in place; delete the root copy when you are ready.")
+    return EXIT_SUCCESS
+
 def init(args)->int:
     root=norm(args.path); project=args.project or root.name; owner=args.owner or "<OWNER_NAME>"; lang=args.language or "en"
     try:
@@ -742,7 +767,7 @@ def init(args)->int:
         data=files(project,owner,lang)
         data.update(autopilot_files(project,owner,lang))
         for rel,txt in data.items(): write(root/rel,txt)
-        dirs=["_inbox/ideas","_inbox/files","_inbox/notes","_runs","_proposals/knowledge_updates","_proposals/schema_changes","_proposals/workflow_changes","_verification/checklists","_verification/tests","_verification/rollback","_publish","_archive","_attention",".vucp/cache",".vucp/tmp",".vucp/transient_runs","stages/research/input","stages/research/output","stages/drafting/input","stages/drafting/output","stages/review/input","stages/review/output"]
+        dirs=FULL_DIRS
         for d in dirs: keep(root/d)
         payload={"ok":True,"command":"init","path":str(root),"project":project,"protocol_version":PROTOCOL_VERSION,"created_files":len(data)}
         if args.json: out_json(payload)
@@ -1253,6 +1278,19 @@ def cmd_help(c:str)->str:
     if c=="init": return """\nUsage:\n  vucp init <path> [--project NAME] [--owner NAME] [--language bg|en] [--lite] [--force] [--json]\n\nCreates a Standard VUCP workspace.\nWith --lite, creates a 3-file Lite workspace instead: AGENTS.md, CURRENT.md, LEARNINGS.md.\n\nExamples:\n  python vucp_cli_mvp.py init my-project\n  python vucp_cli_mvp.py init my-project --project \"My Project\" --owner \"Zahari\"\n  python vucp_cli_mvp.py init my-project --lite\n\nSafety:\n  Refuses to write into a non-empty folder unless --force is used.\n\nExit codes:\n  0 success\n  2 invalid arguments\n  3 filesystem error\n"""
     if c=="lint": return """\nUsage:\n  vucp lint <path> [--json]\n\nValidates a VUCP workspace structure.\n\nExamples:\n  python vucp_cli_mvp.py lint my-project\n  python vucp_cli_mvp.py lint my-project --json\n\nExit codes:\n  0 success\n  1 validation failed\n  2 invalid arguments\n"""
     if c=="graph": return """\nUsage:\n  vucp graph <path> [--output PATH] [--json]\n\nGenerates Mermaid workflow graph from MANIFEST.yaml.\n\nExamples:\n  python vucp_cli_mvp.py graph my-project\n  python vucp_cli_mvp.py graph my-project --output _publish/workflow.mmd\n\nExit codes:\n  0 success\n  1 validation failed\n  2 invalid arguments\n  3 filesystem error\n"""
+    if c=="upgrade": return """
+Usage:
+  vucp upgrade <path> [--dry-run] [--json]
+
+Upgrades a Lite workspace to the full VUCP layout, non-destructively:
+only missing files are created; AGENTS.md and CURRENT.md are kept unchanged.
+LEARNINGS.md is copied to _delta/LEARNINGS.md and the original is left in place.
+
+Exit codes:
+  0 success
+  1 not a Lite workspace
+  3 filesystem error
+"""
     if c=="patterns": return """
 Usage:
   vucp patterns <path> [--patterns PATH] [--tags a,b,c] [--max N] [--include-candidates] [--json]
@@ -1303,6 +1341,8 @@ Exit codes:
 
 def subparse(command:str, rest:List[str])->Tuple[argparse.Namespace,Any]:
     if rest and rest[0] in ["help","/?","--help","-h"]: print(cmd_help(command)); raise SystemExit(EXIT_SUCCESS)
+    if command=="upgrade":
+        p=argparse.ArgumentParser(prog="vucp upgrade",add_help=False); p.add_argument("path",nargs="?",default="."); p.add_argument("--dry-run",action="store_true"); p.add_argument("--json",action="store_true"); return p.parse_args(rest),upgrade
     if command=="init":
         p=argparse.ArgumentParser(prog="vucp init",add_help=False); p.add_argument("path",nargs="?",default="vucp-workspace"); p.add_argument("--project"); p.add_argument("--owner"); p.add_argument("--language",default="en"); p.add_argument("--force",action="store_true"); p.add_argument("--lite",action="store_true"); p.add_argument("--json",action="store_true"); return p.parse_args(rest),init
     if command=="lint":

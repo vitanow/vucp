@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased - fix/patterns-filter-and-audit-example
+## Unreleased
 
 ### Fixed
 
@@ -11,6 +11,9 @@
 
 ### Changed
 
+- `patterns`: `does_not_apply_to` now overrides positive tag matches (case-insensitive, trimmed).
+- Frontmatter parser only accumulates `- item` block-list lines for known list fields (`tags`, `applies_to`, `does_not_apply_to`, `source_projects`, `semantic_aliases`, `cross_references`), so list-like lines under other keys (e.g. block scalars) are not attached to the wrong key.
+- CI runs the test suite on Python 3.9, 3.11 and 3.13.
 - Defined `patterns --tags` semantics: OR across tags, case-insensitive, whitespace-trimmed, empty entries ignored, duplicates removed. Results ranked by number of matched tags, then score; JSON includes `matched_tags`. An explicit `--tags ""` means no filter (previously it silently fell back to `user_context`). Documented in `patterns --help`, README, and `docs/CROSS_PROJECT_PATTERNS.md`.
 
 ### Added

@@ -118,6 +118,8 @@ They must not override:
 - Multiple tags use OR: a pattern is selected if it matches any tag.
 - Tags are matched against the pattern's `tags`, `applies_to`, and `source_projects`.
 - Matching is case-insensitive and whitespace-trimmed; empty entries are ignored.
+- `does_not_apply_to` overrides positive matches: if any given tag appears in a pattern's `does_not_apply_to`, the pattern is excluded. Example: a pattern with `tags: [deployment]` and `does_not_apply_to: [production]` is excluded for `--tags deployment,production`.
+- Frontmatter block lists (`- item`) are read only for list fields: `tags`, `applies_to`, `does_not_apply_to`, `source_projects`, `semantic_aliases`, `cross_references`.
 - Results are ranked by number of matched tags, then by confirmed status and confidence.
 - If nothing matches, 0 patterns are returned (exit code 0).
 - `--tags ""` means no tag filter; omitting `--tags` uses `user_context` from `WORKSPACE.md`.

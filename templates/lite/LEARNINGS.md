@@ -6,7 +6,7 @@ Mark an outdated entry with `status: obsolete` instead of deleting it.
 Entry format:
 
 ```
-## <YYYY-MM-DD> - <short title>
+## <date> - <short title>
 type: error | lesson
 status: candidate | confirmed | obsolete
 what happened: <one or two lines>

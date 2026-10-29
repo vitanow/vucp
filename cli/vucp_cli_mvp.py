@@ -1188,6 +1188,12 @@ def extract_autopilot_entries(text:str)->List[dict]:
     return entries
 
 
+def autopilot_status_error(args, root:Path, ap_file:Path, msg:str)->int:
+    payload={"ok":False,"command":"autopilot","subcommand":"status","path":str(root),"mode":"INVALID","file":str(ap_file),"file_exists":True,"error":msg}
+    if args.json: out_json(payload)
+    print(f"ERROR: {msg}",file=sys.stderr)
+    return EXIT_VALIDATION_FAILED
+
 def autopilot(args)->int:
     # Read/set Assisted Autopilot mode and audit structured agent actions.
     root=norm(args.path)
@@ -1247,8 +1253,15 @@ autopilot_log: "_delta/AUTOPILOT_LOG.md"
 
     mode="NOT SET"
     if ap_file.exists():
-        m=re.search(r"mode:\s*(SILENT|SURFACE|GUIDED)",read_text_safe(ap_file),re.I)
-        if m: mode=m.group(1).upper()
+        try:
+            if not ap_file.is_file(): raise OSError("not a regular file")
+            ap_txt=ap_file.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError) as e:
+            return autopilot_status_error(args, root, ap_file, f"AUTOPILOT.md could not be read ({e.__class__.__name__}: {e}).")
+        m=re.search(r"mode:\s*(SILENT|SURFACE|GUIDED)\b",ap_txt,re.I)
+        if not m:
+            return autopilot_status_error(args, root, ap_file, "AUTOPILOT.md has no valid mode. Use SILENT, SURFACE, or GUIDED (vucp autopilot set <path> --mode SURFACE).")
+        mode=m.group(1).upper()
     payload={"ok":True,"command":"autopilot","subcommand":"status","path":str(root),"mode":mode,"file":str(ap_file),"file_exists":ap_file.exists()}
     if args.json: out_json(payload)
     else: print(f"Autopilot mode: {mode} ({'configured' if ap_file.exists() else 'AUTOPILOT.md missing'})")

@@ -4,6 +4,10 @@ Ready-to-use workspace starters. Copy the folder that matches your project type.
 
 ## Available Templates
 
+### lite/
+Smallest starting point: 3 files (AGENTS.md, CURRENT.md, LEARNINGS.md), about 470 tokens.
+Create with `python cli/vucp_cli_mvp.py init my-project --lite`. See `docs/LITE.md`.
+
 ### standard/
 Generic starting point. Works for any domain.
 Three stages: research → drafting → review.

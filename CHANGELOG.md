@@ -18,6 +18,8 @@
 
 ### Added
 
+- VUCP Lite: 3-file workspace (`AGENTS.md`, `CURRENT.md`, `LEARNINGS.md`) in `templates/lite/`, about 470 tokens in total. `init --lite` creates it; `lint`, `doctor` and `export` detect Lite mode (no warnings for missing full-mode files; fresh Lite init is doctor-clean; JSON output includes `mode`). Lite files over 8000 characters get a `LITE_FILE_TOO_LONG` warning. See `docs/LITE.md`.
+- `vucp upgrade <path> [--dry-run]`: non-destructive Lite to full upgrade; only creates missing files, copies `LEARNINGS.md` to `_delta/LEARNINGS.md`.
 - `tests/test_cli.py` pytest suite (smoke tests for init/lint/doctor/export plus regression tests for both fixes).
 - `requirements-dev.txt` with pytest; CI runs the test suite.
 

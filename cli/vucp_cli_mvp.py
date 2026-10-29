@@ -27,7 +27,8 @@ Usage:
   python vucp_cli_mvp.py <command> [options]
 
 Commands:
-  init    Create a Standard VUCP workspace
+  init    Create a Standard VUCP workspace (--lite: 3-file mode)
+  upgrade Upgrade a Lite workspace to full mode (non-destructive)
   lint    Validate a VUCP workspace
   graph    Generate Mermaid workflow graph
   doctor   Diagnose workspace health and instruction smells
@@ -692,16 +693,81 @@ No structured autopilot actions recorded yet.
 """,
     }
 
+
+# --- VUCP Lite: 3-file mode (kept in sync with templates/lite/, see tests) ---
+LITE_FILES=["AGENTS.md","CURRENT.md","LEARNINGS.md"]
+LITE_FILE_SOFT_LIMIT=8000  # characters; Lite files are meant to stay short
+LITE_TEMPLATE={'AGENTS.md': '---\nvucp_mode: lite\nproject: "<PROJECT_NAME>"\nowner: "<OWNER_NAME>"\nautonomy: SURFACE\n---\n# AGENTS.md - <PROJECT_NAME>\n\nInstructions for AI agents working in this project. These are instructions,\nnot enforcement: nothing here technically blocks an action. For real limits,\nuse your tool\'s permission settings (sandbox, allow/deny lists, hooks).\n\n## Start of every session\n\n1. Read `CURRENT.md` (state and next step).\n2. Skim `LEARNINGS.md` before repeating a similar task.\n3. Do not load other files unless the task needs them.\n\n## How to work\n\n- Keep changes small and reversible. Explain what you changed and why.\n- Ask when the goal is ambiguous instead of guessing.\n- Do not invent facts, sources, or test results.\n\n## Autonomy: SURFACE\n\nWork without asking for routine, reversible steps. Stop and ask first for:\n\n- deleting or overwriting data, irreversible changes;\n- production, deploys, payments, publishing, sending messages;\n- credentials, secrets, permissions;\n- editing this file.\n\nOther modes: GUIDED (ask before each significant step),\nSILENT (only stop for the list above).\n\n## End of every session\n\n- Update `CURRENT.md`: what changed, next step, anything needing the human.\n- Append to `LEARNINGS.md` if you hit an error or learned something reusable.\n', 'CURRENT.md': '# CURRENT - <PROJECT_NAME>\n\nLast updated: <YYYY-MM-DD>\n\n## Goal\n\n<One sentence: what this project is trying to achieve right now.>\n\n## State\n\n- <What is done, what is in progress.>\n\n## Next step\n\n- <The single next concrete action.>\n\n## Needs human attention\n\n- <Decisions, approvals, or blockers. Write "None" if empty.>\n', 'LEARNINGS.md': '# LEARNINGS - <PROJECT_NAME>\n\nAppend-only. Add new entries at the bottom; do not rewrite old ones.\nMark an outdated entry with `status: obsolete` instead of deleting it.\n\nEntry format:\n\n```\n## <date> - <short title>\ntype: error | lesson\nstatus: candidate | confirmed | obsolete\nwhat happened: <one or two lines>\nrule: <what to do differently next time>\n```\n\n## Entries\n'}
+
+def lite_files(project:str, owner:str, day:str)->Dict[str,str]:
+    out={}
+    for rel,txt in LITE_TEMPLATE.items():
+        out[rel]=txt.replace("<PROJECT_NAME>",project).replace("<OWNER_NAME>",owner).replace("<YYYY-MM-DD>",day)
+    return out
+
+def is_lite(root:Path)->bool:
+    # Full mode wins if MANIFEST.yaml exists (e.g. after upgrade).
+    if (root/"MANIFEST.yaml").exists(): return False
+    if re.search(r"^vucp_mode:\s*lite\s*$", read_text_safe(root/"AGENTS.md"), re.M): return True
+    return (root/"LEARNINGS.md").exists() and (root/"CURRENT.md").exists()
+
+def lite_issues(root:Path)->List[dict]:
+    issues=[]
+    for rel in LITE_FILES:
+        p=root/rel
+        if not p.exists():
+            issues.append(issue_dict("error","REQUIRED_FILE_MISSING",f"Required Lite file missing: {rel}",rel,"Run vucp init --lite or copy it from templates/lite."))
+        elif len(read_text_safe(p))>LITE_FILE_SOFT_LIMIT:
+            issues.append(issue_dict("warning","LITE_FILE_TOO_LONG",f"{rel} is over {LITE_FILE_SOFT_LIMIT} characters; Lite files should stay short.",rel,"Trim it, or run vucp upgrade to move to full mode."))
+    cur=read_text_safe(root/"CURRENT.md")
+    if cur and "## Next step" not in cur:
+        issues.append(issue_dict("warning","CURRENT_NEXT_STEP_MISSING","CURRENT.md has no '## Next step' section.","CURRENT.md","Add the single next concrete action."))
+    return issues
+
+FULL_DIRS=["_inbox/ideas","_inbox/files","_inbox/notes","_runs","_proposals/knowledge_updates","_proposals/schema_changes","_proposals/workflow_changes","_verification/checklists","_verification/tests","_verification/rollback","_publish","_archive","_attention",".vucp/cache",".vucp/tmp",".vucp/transient_runs","stages/research/input","stages/research/output","stages/drafting/input","stages/drafting/output","stages/review/input","stages/review/output"]
+
+def upgrade(args)->int:
+    # Non-destructive Lite -> full upgrade: only creates missing files, never overwrites.
+    root=norm(args.path)
+    if not root.exists(): print(f"ERROR: workspace path does not exist: {root}",file=sys.stderr); return EXIT_FILESYSTEM_ERROR
+    if not is_lite(root): print(f"ERROR: not a VUCP Lite workspace (or already full): {root}",file=sys.stderr); return EXIT_VALIDATION_FAILED
+    fm=extract_frontmatter_fields(root/"AGENTS.md")
+    project=fm.get("project") or root.name; owner=fm.get("owner") or "<OWNER_NAME>"
+    data=files(project,owner,"en"); data.update(autopilot_files(project,owner,"en"))
+    if (root/"LEARNINGS.md").exists(): data["_delta/LEARNINGS.md"]=read_text_safe(root/"LEARNINGS.md")
+    created=[rel for rel in data if not (root/rel).exists()]
+    kept=[rel for rel in data if (root/rel).exists()]
+    if not args.dry_run:
+        for rel in created: write(root/rel,data[rel])
+        for d in FULL_DIRS: keep(root/d)
+    payload={"ok":True,"command":"upgrade","path":str(root),"dry_run":bool(args.dry_run),"created":created,"kept":kept}
+    if args.json: out_json(payload)
+    else:
+        print(("Would upgrade" if args.dry_run else "Upgraded")+f" Lite -> full: {root}")
+        print(f"Created {len(created)} file(s); kept {len(kept)} existing file(s) unchanged: {', '.join(kept)}")
+        print("LEARNINGS.md was copied to _delta/LEARNINGS.md and left in place; delete the root copy when you are ready.")
+    return EXIT_SUCCESS
+
 def init(args)->int:
     root=norm(args.path); project=args.project or root.name; owner=args.owner or "<OWNER_NAME>"; lang=args.language or "en"
     try:
         if root.exists() and any(root.iterdir()) and not args.force:
             print(f"ERROR: target folder is not empty: {root}",file=sys.stderr); print("Use --force to write into a non-empty folder.",file=sys.stderr); return EXIT_FILESYSTEM_ERROR
         root.mkdir(parents=True,exist_ok=True)
+        if getattr(args,"lite",False):
+            data=lite_files(project,owner,today())
+            for rel,txt in data.items(): write(root/rel,txt)
+            payload={"ok":True,"command":"init","mode":"lite","path":str(root),"project":project,"protocol_version":PROTOCOL_VERSION,"created_files":len(data)}
+            if args.json: out_json(payload)
+            else:
+                print(f"Created VUCP Lite workspace: {root}")
+                print("Files: "+", ".join(LITE_FILES))
+                print("Next: open CURRENT.md and define the goal and next step.")
+            return EXIT_SUCCESS
         data=files(project,owner,lang)
         data.update(autopilot_files(project,owner,lang))
         for rel,txt in data.items(): write(root/rel,txt)
-        dirs=["_inbox/ideas","_inbox/files","_inbox/notes","_runs","_proposals/knowledge_updates","_proposals/schema_changes","_proposals/workflow_changes","_verification/checklists","_verification/tests","_verification/rollback","_publish","_archive","_attention",".vucp/cache",".vucp/tmp",".vucp/transient_runs","stages/research/input","stages/research/output","stages/drafting/input","stages/drafting/output","stages/review/input","stages/review/output"]
+        dirs=FULL_DIRS
         for d in dirs: keep(root/d)
         payload={"ok":True,"command":"init","path":str(root),"project":project,"protocol_version":PROTOCOL_VERSION,"created_files":len(data)}
         if args.json: out_json(payload)
@@ -713,12 +779,12 @@ def init(args)->int:
     except OSError as e:
         print(f"FILESYSTEM ERROR: {e}",file=sys.stderr); return EXIT_FILESYSTEM_ERROR
 
-def print_lint(args,root:Path,issues:List[Issue])->int:
+def print_lint(args,root:Path,issues:List[Issue],mode:str="full")->int:
     errors=[i for i in issues if i.severity=="error"]; warnings=[i for i in issues if i.severity=="warning"]
-    payload={"ok":not errors,"command":"lint","path":str(root),"errors":len(errors),"warnings":len(warnings),"issues":[asdict(i) for i in issues]}
+    payload={"ok":not errors,"command":"lint","mode":mode,"path":str(root),"errors":len(errors),"warnings":len(warnings),"issues":[asdict(i) for i in issues]}
     if args.json: out_json(payload)
     else:
-        print(f"VUCP lint: {root}")
+        print(f"VUCP lint: {root}"+(" (lite)" if mode=="lite" else ""))
         print(("OK" if not errors else "FAILED")+f": {len(errors)} error(s), {len(warnings)} warning(s)")
         for i in issues:
             print(f"{('ERROR' if i.severity=='error' else 'WARN ')} {i.code}"+(f" [{i.path}]" if i.path else "")+f": {i.message}")
@@ -727,6 +793,8 @@ def print_lint(args,root:Path,issues:List[Issue])->int:
 def lint(args)->int:
     root=norm(args.path); issues=[]
     if not root.exists(): return print_lint(args,root,[Issue("error","ROOT_MISSING","Workspace path does not exist.",str(root))])
+    if is_lite(root):
+        return print_lint(args,root,[Issue(i["severity"],i["code"],i["message"],i["path"]) for i in lite_issues(root)],mode="lite")
     for rel in ROOT_FILES:
         if not (root/rel).exists(): issues.append(Issue("error","REQUIRED_FILE_MISSING",f"Required root file missing: {rel}",rel))
     for rel in SYSTEM_DIRS:
@@ -851,8 +919,18 @@ def scan_instruction_smells(root:Path)->List[dict]:
 def doctor(args)->int:
     root=norm(args.path)
     issues=[]
+    mode="full"
     if not root.exists():
         issues.append(issue_dict("error","ROOT_MISSING","Workspace path does not exist.",str(root),"Check the path."))
+    elif is_lite(root):
+        mode="lite"
+        issues.extend(lite_issues(root))
+        if not any((p/".gitignore").exists() for p in [root, root.parent, root.parent.parent, root.parent.parent.parent]):
+            issues.append(issue_dict("info","GITIGNORE_MISSING","No .gitignore found in workspace or parent directories.",".gitignore","If this folder is in git, make sure private notes are not committed."))
+        issues.extend(scan_instruction_smells(root))
+        lt=read_text_safe(root/"LEARNINGS.md"); lt=lt.split("## Entries",1)[1] if "## Entries" in lt else lt
+        cand=len(re.findall(r"^status\s*:\s*candidate\s*$",lt,re.I|re.M))
+        if cand: issues.append(issue_dict("info","LEARNING_CANDIDATES",f"Found {cand} candidate learning entries.","LEARNINGS.md","Review them and mark confirmed or obsolete."))
     else:
         for rel in ROOT_FILES:
             if not (root/rel).exists(): issues.append(issue_dict("error","REQUIRED_FILE_MISSING",f"Required root file missing: {rel}",rel,"Run vucp init or copy the missing file from templates/standard."))
@@ -885,10 +963,10 @@ def doctor(args)->int:
             issues.append(issue_dict("info","DREAM_PASS_CANDIDATES",f"Found {cand} candidate memory entries.","_delta/","Run: vucp dream . --write"))
     errors=[i for i in issues if i["severity"]=="error"]
     warnings=[i for i in issues if i["severity"]=="warning"]
-    payload={"ok":not errors,"command":"doctor","path":str(root),"errors":len(errors),"warnings":len(warnings),"issues":issues}
+    payload={"ok":not errors,"command":"doctor","mode":mode,"path":str(root),"errors":len(errors),"warnings":len(warnings),"issues":issues}
     if args.json: out_json(payload)
     else:
-        print(f"VUCP doctor: {root}")
+        print(f"VUCP doctor: {root}"+(" (lite)" if mode=="lite" else ""))
         print(("OK" if not errors else "FAILED")+f": {len(errors)} error(s), {len(warnings)} warning(s)")
         for i in issues:
             sev=i['severity'].upper().ljust(7)
@@ -897,6 +975,7 @@ def doctor(args)->int:
     return EXIT_SUCCESS if not errors else EXIT_VALIDATION_FAILED
 
 def build_adapter_content(root:Path,target:str)->str:
+    if is_lite(root): return build_lite_adapter_content(root,target)
     ws=read_text_safe(root/"WORKSPACE.md")
     cur=read_text_safe(root/"CURRENT.md")
     agents=read_text_safe(root/"AGENTS.md")
@@ -940,6 +1019,26 @@ When instructions conflict, prefer this order:
 4. `CURRENT.md`;
 5. `WORKSPACE.md`;
 6. cross-project patterns only when relevant.
+'''
+
+def build_lite_adapter_content(root:Path,target:str)->str:
+    name="CLAUDE.md" if target=="claude-md" else "AGENTS.md"
+    return f'''# {name}
+
+Generated from a VUCP Lite workspace. Source of truth: `AGENTS.md`, `CURRENT.md`, `LEARNINGS.md`.
+Edit those files, not this generated one.
+
+## Agent Instructions
+
+{read_text_safe(root/"AGENTS.md")[:8000]}
+
+## Current State
+
+{read_text_safe(root/"CURRENT.md")[:4000]}
+
+## Learnings
+
+{read_text_safe(root/"LEARNINGS.md")[:8000]}
 '''
 
 def export_adapter(args)->int:
@@ -1176,9 +1275,22 @@ def patterns(args)->int:
 
 
 def cmd_help(c:str)->str:
-    if c=="init": return """\nUsage:\n  vucp init <path> [--project NAME] [--owner NAME] [--language bg|en] [--force] [--json]\n\nCreates a Standard VUCP workspace.\n\nExamples:\n  python vucp_cli_mvp.py init my-project\n  python vucp_cli_mvp.py init my-project --project \"My Project\" --owner \"Zahari\"\n\nSafety:\n  Refuses to write into a non-empty folder unless --force is used.\n\nExit codes:\n  0 success\n  2 invalid arguments\n  3 filesystem error\n"""
+    if c=="init": return """\nUsage:\n  vucp init <path> [--project NAME] [--owner NAME] [--language bg|en] [--lite] [--force] [--json]\n\nCreates a Standard VUCP workspace.\nWith --lite, creates a 3-file Lite workspace instead: AGENTS.md, CURRENT.md, LEARNINGS.md.\n\nExamples:\n  python vucp_cli_mvp.py init my-project\n  python vucp_cli_mvp.py init my-project --project \"My Project\" --owner \"Zahari\"\n  python vucp_cli_mvp.py init my-project --lite\n\nSafety:\n  Refuses to write into a non-empty folder unless --force is used.\n\nExit codes:\n  0 success\n  2 invalid arguments\n  3 filesystem error\n"""
     if c=="lint": return """\nUsage:\n  vucp lint <path> [--json]\n\nValidates a VUCP workspace structure.\n\nExamples:\n  python vucp_cli_mvp.py lint my-project\n  python vucp_cli_mvp.py lint my-project --json\n\nExit codes:\n  0 success\n  1 validation failed\n  2 invalid arguments\n"""
     if c=="graph": return """\nUsage:\n  vucp graph <path> [--output PATH] [--json]\n\nGenerates Mermaid workflow graph from MANIFEST.yaml.\n\nExamples:\n  python vucp_cli_mvp.py graph my-project\n  python vucp_cli_mvp.py graph my-project --output _publish/workflow.mmd\n\nExit codes:\n  0 success\n  1 validation failed\n  2 invalid arguments\n  3 filesystem error\n"""
+    if c=="upgrade": return """
+Usage:
+  vucp upgrade <path> [--dry-run] [--json]
+
+Upgrades a Lite workspace to the full VUCP layout, non-destructively:
+only missing files are created; AGENTS.md and CURRENT.md are kept unchanged.
+LEARNINGS.md is copied to _delta/LEARNINGS.md and the original is left in place.
+
+Exit codes:
+  0 success
+  1 not a Lite workspace
+  3 filesystem error
+"""
     if c=="patterns": return """
 Usage:
   vucp patterns <path> [--patterns PATH] [--tags a,b,c] [--max N] [--include-candidates] [--json]
@@ -1229,8 +1341,10 @@ Exit codes:
 
 def subparse(command:str, rest:List[str])->Tuple[argparse.Namespace,Any]:
     if rest and rest[0] in ["help","/?","--help","-h"]: print(cmd_help(command)); raise SystemExit(EXIT_SUCCESS)
+    if command=="upgrade":
+        p=argparse.ArgumentParser(prog="vucp upgrade",add_help=False); p.add_argument("path",nargs="?",default="."); p.add_argument("--dry-run",action="store_true"); p.add_argument("--json",action="store_true"); return p.parse_args(rest),upgrade
     if command=="init":
-        p=argparse.ArgumentParser(prog="vucp init",add_help=False); p.add_argument("path",nargs="?",default="vucp-workspace"); p.add_argument("--project"); p.add_argument("--owner"); p.add_argument("--language",default="en"); p.add_argument("--force",action="store_true"); p.add_argument("--json",action="store_true"); return p.parse_args(rest),init
+        p=argparse.ArgumentParser(prog="vucp init",add_help=False); p.add_argument("path",nargs="?",default="vucp-workspace"); p.add_argument("--project"); p.add_argument("--owner"); p.add_argument("--language",default="en"); p.add_argument("--force",action="store_true"); p.add_argument("--lite",action="store_true"); p.add_argument("--json",action="store_true"); return p.parse_args(rest),init
     if command=="lint":
         p=argparse.ArgumentParser(prog="vucp lint",add_help=False); p.add_argument("path",nargs="?",default="."); p.add_argument("--json",action="store_true"); return p.parse_args(rest),lint
     if command=="graph":

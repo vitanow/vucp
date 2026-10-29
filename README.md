@@ -73,6 +73,22 @@ _attention/ATTENTION.md
 
 Autopilot is not blind autonomy. High-risk, destructive, production, credential, publishing, and trusted-memory actions still require approval.
 
+## Lite mode
+
+Start with 3 files instead of the full layout:
+
+```bash
+python cli/vucp_cli_mvp.py init my-project --lite
+```
+
+- `AGENTS.md`: how agents behave and when to stop and ask (instructions, not enforcement)
+- `CURRENT.md`: goal, state, next step, what needs human attention
+- `LEARNINGS.md`: errors and lessons, append-only
+
+The template is about 470 tokens. lint, doctor and export understand Lite
+workspaces; `vucp upgrade` moves to full mode without overwriting anything.
+See `docs/LITE.md`.
+
 ## AI-guided setup
 
 VUCP includes an AI-facing onboarding guide:

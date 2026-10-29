@@ -160,7 +160,7 @@ This complements semantic memory systems such as Cognee, Mem0, Zep, and Letta wi
 
 ```text
 cli/                         Reference CLI
-spec/                        Core protocol spec
+spec/                        Normative spec (VUCP_SPEC_v0.4.1_FINAL.md); archive/ is superseded
 schemas/                     Optional schemas, when present
 templates/standard/          General VUCP workspace template
 templates/web-dev/           Web development template

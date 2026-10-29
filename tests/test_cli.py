@@ -303,3 +303,17 @@ def test_lite_upgrade_non_destructive(tmp_path):
 def test_full_workspace_not_detected_as_lite(tmp_path):
     ws = init_ws(tmp_path)
     assert json.loads(run("lint", ws, "--json").stdout)["mode"] == "full"
+
+
+# --- hardening 9.2 ---
+
+def test_full_init_writes_safe_gitignore_and_is_doctor_clean(tmp_path):
+    ws = init_ws(tmp_path)
+    gi = (ws / ".gitignore").read_text(encoding="utf-8")
+    for pat in ["USER_CORE.private.md", ".env", "*.key", ".vucp/tmp/"]:
+        assert pat in gi
+    r = run("doctor", ws, "--json")
+    assert r.returncode == 0, r.stderr
+    codes = [i["code"] for i in json.loads(r.stdout)["issues"]]
+    assert "GITIGNORE_MISSING" not in codes
+    assert not [i for i in json.loads(r.stdout)["issues"] if i["severity"] in ("error", "warning")]

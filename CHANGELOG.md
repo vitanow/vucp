@@ -1,6 +1,24 @@
 # Changelog
 
-## Unreleased
+## Unreleased - 0.5.0a10 (0.5-alpha-9.2)
+
+Not tagged or released yet.
+
+### Hardening (9.2)
+
+- Packaging: `pyproject.toml` with a `vucp` console command (`pipx install .` / `uv tool install .`), Python >= 3.9, MIT.
+- Full `init` writes a safe default `.gitignore`; a fresh full workspace is doctor-clean.
+- `autopilot status` fails with a clear error and exit 1 on an invalid or unreadable `AUTOPILOT.md` (previously reported `NOT SET` with exit 0).
+- Docs are explicit that Autopilot and `AGENTS.md` are instructions, not enforcement; enforcement depends on the agent runtime.
+- CI: packaging smoke test in the 3.9/3.11/3.13 matrix; runner pinned to `ubuntu-24.04` (Python 3.9 is not available on `ubuntu-latest`).
+- More tests (40 in total).
+
+### Docs and repo cleanup (9.2)
+
+- One normative spec: `spec/VUCP_SPEC_v0.4.1_FINAL.md`. Older versions moved to `spec/archive/` and marked superseded, non-normative.
+- ROADMAP and CHANGELOG refreshed; internal build history removed from the changelog.
+- Launch, branding and internal planning docs removed from the public tree.
+- Single version string: package `0.5.0a10`, CLI `--version` prints `vucp 0.5.0a10 (0.5-alpha-9.2)`.
 
 ### Fixed
 
@@ -44,51 +62,18 @@
 - `docs/LOW_FRICTION_PROFESSIONAL_MODE.md`
 - `docs/AUTOPILOT_LOG_SCHEMA.md`
 
-### Positioning
 
-VUCP is now ready to launch as a portable AI workspace format with AI-guided onboarding, semantic links, cross-project patterns, and Assisted Autopilot.
+## v0.5-alpha-9 - 2026-06-28
 
+### Added
 
-## v0.5-alpha-9 — 2026-06-28 (GPT merge + enhancements)
-
-### Merged from ChatGPT alpha-7 parallel build
-
-- `docs/SEMANTIC_ALIASES_AND_LINKS.md` — standalone specification for
-  semantic aliases and cross-reference links. GPT's version was cleaner
-  than our distributed approach. Enhanced with usage examples for
-  index.md and LEARNINGS.md, and relationship to semantic memory tools.
-
-- `templates/web-dev/_knowledge/patterns/rollback-first-deployment.md` —
-  live example of the semantic_aliases + cross_references format in action.
-  Added to templates/web-dev/, templates/standard/, and template-standard/.
-  Includes confirmed pattern with 6 evidence points and complete rule set.
-
-- `_proposals/knowledge_updates/dream_pass_report.md` — structured output
-  template for Dream Pass results. Agent fills this after each pass.
-  Includes promotion checklist for cross-project pattern graduation.
-  Added to templates/standard/ and template-standard/.
-
-- `docs/AI_ONBOARDING_PATTERN.md` — meta-document explaining the
-  `*_SETUP_GUIDE.ai.md` pattern: design rules, autonomous mode,
-  extension to marketplace products.
-
-- `VUCP_SETUP_GUIDE.ai.md` — added Step 7b: semantic memory tool
-  positioning. If the user mentions Cognee, Mem0, Zep, or Obsidian,
-  the agent explains complementarity, not competition.
-
-- `docs/AI_SETUP_GUIDE.md` — converted from duplicate to canonical
-  reference. Points to `VUCP_SETUP_GUIDE.ai.md` as source of truth.
-
-- `.github/ISSUE_TEMPLATE/` — bug_report.md and feature_request.md
-  added for GitHub community contributions.
-
-### Not merged (GPT alpha-7 missing features we have)
-
-- Autopilot Layer (AUTOPILOT.md, vucp autopilot CLI) — not in GPT build
-- patterns --tags YAML list fix — not in GPT build
-- Build artifact cleanup — GPT added a new ALPHA_7_AUDIT.json to root
-- semantic_aliases in template index.md — GPT had doc but not template field
-- cross_references in LEARNINGS.md template — GPT had doc but not template
+- `docs/SEMANTIC_ALIASES_AND_LINKS.md`: specification for semantic aliases and cross-reference links, with examples for `index.md` and `LEARNINGS.md`.
+- `templates/web-dev/_knowledge/patterns/rollback-first-deployment.md`: example pattern using `semantic_aliases` and `cross_references` (also in `templates/standard/`).
+- `_proposals/knowledge_updates/dream_pass_report.md` template for Dream Pass results.
+- `docs/AI_ONBOARDING_PATTERN.md`: explains the `*_SETUP_GUIDE.ai.md` pattern.
+- `VUCP_SETUP_GUIDE.ai.md` Step 7b: how VUCP relates to semantic memory tools (Cognee, Mem0, Zep, Obsidian).
+- `docs/AI_SETUP_GUIDE.md` now points to `VUCP_SETUP_GUIDE.ai.md` as the source of truth.
+- GitHub issue templates (bug report, feature request).
 
 ## v0.5-alpha-8 — 2026-06-28 (Autopilot Layer)
 

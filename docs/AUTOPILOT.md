@@ -1,6 +1,6 @@
 # Assisted Autopilot Layer
 
-Status: optional v0.5 extension. Current package: `0.5-alpha-9.1`.
+Status: optional v0.5 extension. Current package: `0.5.0a10` (0.5-alpha-9.2).
 
 Assisted Autopilot lets VUCP reduce unnecessary human interaction while keeping important decisions visible.
 

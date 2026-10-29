@@ -1,9 +1,11 @@
+> **Normative.** This is the single authoritative VUCP specification. Files in `spec/archive/` are superseded and non-normative. Where this spec and other docs disagree, this spec wins. Rules about agent behavior are instructions; enforcement depends on the agent runtime.
+
 # VUCP_SPEC_v0.4.1.md
 
 # VUCP — Living Workspace Protocol  
 ## Vitanow Unified Context Protocol v0.4.1
 
-**Status:** Final MVP Specification  
+**Status:** Normative (Final MVP Specification)  
 **Version:** 0.4.1  
 **Author:** Zahari Georgiev Vitanov / Vitanow OPS  
 **Date:** 2026-06-23  

@@ -13,14 +13,15 @@ from datetime import date
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-VERSION = "0.5-alpha-9.1"
+VERSION = "0.5.0a10"  # PEP 440, must match pyproject.toml
+RELEASE_NAME = "0.5-alpha-9.2"
 PROTOCOL_VERSION = "0.4.1"
 EXIT_SUCCESS=0; EXIT_VALIDATION_FAILED=1; EXIT_INVALID_ARGUMENTS=2; EXIT_FILESYSTEM_ERROR=3
 ROOT_FILES=["START.md","WORKSPACE.md","CURRENT.md","AGENTS.md","MANIFEST.yaml","SCHEMA.md","SAFEGUARDS.md","DECISIONS.md",".vucpignore"]
 SYSTEM_DIRS=["_inbox","_knowledge","_delta","_runs","_proposals","_verification","_publish","_archive"]
 DELTA_FILES=["_delta/LOG.md","_delta/LEARNINGS.md","_delta/ERRORS.md"]
 HELP=f"""
-VUCP CLI MVP v{VERSION}
+VUCP CLI MVP v{VERSION} ({RELEASE_NAME})
 
 Usage:
   vucp <command> [options]
@@ -1406,7 +1407,7 @@ def subparse(command:str, rest:List[str])->Tuple[argparse.Namespace,Any]:
 def main(argv:Optional[List[str]]=None)->int:
     argv=list(sys.argv[1:] if argv is None else argv)
     if not argv or argv[0] in ["--help","-h","help","/?"]: print(HELP); return EXIT_SUCCESS
-    if argv[0]=="--version": print(f"vucp {VERSION} (protocol {PROTOCOL_VERSION})"); return EXIT_SUCCESS
+    if argv[0]=="--version": print(f"vucp {VERSION} ({RELEASE_NAME}), protocol {PROTOCOL_VERSION}"); return EXIT_SUCCESS
     try:
         args,fn=subparse(argv[0],argv[1:]); return int(fn(args))
     except SystemExit as e:

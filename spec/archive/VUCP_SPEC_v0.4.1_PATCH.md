@@ -1,3 +1,5 @@
+> **Superseded, non-normative.** Kept for history only. The normative spec is [`spec/VUCP_SPEC_v0.4.1_FINAL.md`](../VUCP_SPEC_v0.4.1_FINAL.md).
+
 # VUCP_SPEC_v0.4.1_PATCH.md
 
 ## VUCP v0.4.1 Stabilization Patch

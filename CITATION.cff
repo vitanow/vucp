@@ -1,8 +1,7 @@
 cff-version: 1.2.0
 message: "If you use VUCP, please cite it as below."
 title: "VUCP — Vitanow Unified Context Protocol"
-version: "0.5-alpha-9.1"
-date-released: "2026-07-06"
+version: "0.5.0a10"
 authors:
   - family-names: "Vitanov"
     given-names: "Zahari Georgiev"

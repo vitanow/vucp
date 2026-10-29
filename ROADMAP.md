@@ -1,45 +1,29 @@
 # VUCP Roadmap
 
-## v0.5-alpha — Current
+Status as of 0.5.0a10 (0.5-alpha-9.2). Only future work is listed here; finished work is in `CHANGELOG.md`.
 
-- Package repo structure
-- Include Core v0.4.1 spec
-- Include Standard template
-- Include demo workspace
-- Include SaaS MVP Launch Kit package
-- Include CLI MVP with `init`, `lint`, `graph`
+## Done (for reference)
 
-## v0.5-beta — Next
+- Core spec v0.4.1 (normative), standard, web-dev and Lite templates, demo workspace.
+- CLI: `init` (full and `--lite`), `upgrade`, `lint`, `doctor`, `graph`, `export`, `patterns`, `dream`, `autopilot`.
+- Test suite and CI on Python 3.9/3.11/3.13; installable `vucp` package.
+- 9.2 hardening and docs cleanup.
 
-- Harden `vucp lint`
-- Add `vucp index`
-- Add `vucp context load`
-- Add `vucp doctor`
-- Add test suite
+## Next: benchmark
+
+- Measure whether VUCP helps: same tasks with and without a VUCP workspace (Lite and full), tracking tokens loaded, task success, repeated errors, and human interruptions.
+- Publish the method and raw results in the repo.
 
 ## v0.6
 
-- Add `vucp wizard`
-- Add `vucp quick`
-- Add `vucp snapshot`
-- Add `vucp rollback`
-- Add multilingual template generation
+- CLI modularization (split `cli/vucp_cli_mvp.py` into a package).
+- `vucp doctor --fix` for safe automatic repairs.
+- `vucp export --install` for direct AGENTS.md / CLAUDE.md installation.
+- `vucp init --template web-dev`.
+- `vucp context load`, `vucp snapshot`, `vucp rollback`.
+- Better cross-project pattern scoring; Dream Pass approval workflow.
 
 ## Later
 
-- VUCP Hub
-- Package installation
-- Bridges
-- Human Interface Layer
-- Agent Orchestration Layer runtime
-
-## Immediate Tooling Roadmap
-
-The next value should be tooling, not more philosophy:
-
-1. `vucp doctor --fix` for safe automatic repairs.
-2. `vucp export --install` for direct AGENTS.md / CLAUDE.md installation.
-3. `vucp init --template web-dev`.
-4. Better cross-project pattern scoring.
-5. Dream Pass approval workflow.
-
+- `vucp wizard`, multilingual template generation.
+- VUCP Hub, bridges, Human Interface Layer, agent orchestration runtime.

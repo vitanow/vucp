@@ -317,3 +317,106 @@ def test_full_init_writes_safe_gitignore_and_is_doctor_clean(tmp_path):
     codes = [i["code"] for i in json.loads(r.stdout)["issues"]]
     assert "GITIGNORE_MISSING" not in codes
     assert not [i for i in json.loads(r.stdout)["issues"] if i["severity"] in ("error", "warning")]
+
+
+def _assert_graceful(r, code=1):
+    assert r.returncode == code, (r.stdout, r.stderr)
+    assert "Traceback" not in r.stderr and "Traceback" not in r.stdout
+    assert "ERROR" in r.stderr
+
+
+def test_autopilot_status_invalid_mode(tmp_path):
+    ws = init_ws(tmp_path)
+    (ws / "AUTOPILOT.md").write_text("---\nmode: TURBO\n---\n# broken\n", encoding="utf-8")
+    _assert_graceful(run("autopilot", "status", ws))
+    r = run("autopilot", "status", ws, "--json")
+    _assert_graceful(r)
+    data = json.loads(r.stdout)
+    assert data["ok"] is False and data["mode"] == "INVALID"
+
+
+def test_autopilot_status_binary_garbage(tmp_path):
+    ws = init_ws(tmp_path)
+    (ws / "AUTOPILOT.md").write_bytes(b"\xff\xfe\x00\x81garbage\x00")
+    _assert_graceful(run("autopilot", "status", ws))
+
+
+def test_autopilot_status_empty_file(tmp_path):
+    ws = init_ws(tmp_path)
+    (ws / "AUTOPILOT.md").write_text("", encoding="utf-8")
+    _assert_graceful(run("autopilot", "status", ws))
+
+
+def test_autopilot_status_is_directory(tmp_path):
+    ws = init_ws(tmp_path)
+    (ws / "AUTOPILOT.md").unlink()
+    (ws / "AUTOPILOT.md").mkdir()
+    _assert_graceful(run("autopilot", "status", ws))
+
+
+def test_autopilot_status_valid_after_set(tmp_path):
+    ws = init_ws(tmp_path)
+    assert run("autopilot", "set", ws, "--mode", "GUIDED").returncode == 0
+    r = run("autopilot", "status", ws, "--json")
+    assert r.returncode == 0 and json.loads(r.stdout)["mode"] == "GUIDED"
+
+
+def test_export_claude_md_has_key_sections(tmp_path):
+    ws = init_ws(tmp_path)
+    r = run("export", "claude-md", ws, "--json")
+    assert r.returncode == 0, r.stderr
+    text = Path(json.loads(r.stdout)["output"]).read_text(encoding="utf-8")
+    assert text.startswith("# CLAUDE.md")
+    for section in ["## Current State", "## Workspace", "## Agent Instructions", "## Safeguards", "## Next Action"]:
+        assert section in text, section
+    assert "Test" in text
+
+
+def test_export_all_targets_nonempty_and_distinct_paths(tmp_path):
+    ws = init_ws(tmp_path)
+    outs = set()
+    for target in ["agents-md", "codex", "claude-md", "cursor-rules", "windsurf-rules"]:
+        r = run("export", target, ws, "--json")
+        assert r.returncode == 0, (target, r.stderr)
+        data = json.loads(r.stdout)
+        assert data["bytes"] > 200
+        out = Path(data["output"])
+        assert "## Safeguards" in out.read_text(encoding="utf-8") or "Safeguard" in out.read_text(encoding="utf-8")
+        outs.add(str(out))
+    assert len(outs) == 5
+
+
+def _lint_codes(ws):
+    r = run("lint", ws, "--json")
+    assert "Traceback" not in r.stderr
+    return r, [i["code"] for i in json.loads(r.stdout)["issues"]]
+
+
+def test_lint_invalid_risk_level(tmp_path):
+    ws = init_ws(tmp_path)
+    cf = ws / "stages" / "research" / "CONTEXT.md"
+    cf.write_text(cf.read_text(encoding="utf-8").replace('risk_level: "low"', 'risk_level: "extreme"'), encoding="utf-8")
+    _, codes = _lint_codes(ws)
+    assert "CONTEXT_RISK_INVALID" in codes
+
+
+def test_lint_missing_frontmatter_field(tmp_path):
+    ws = init_ws(tmp_path)
+    cf = ws / "stages" / "research" / "CONTEXT.md"
+    cf.write_text(cf.read_text(encoding="utf-8").replace("review_required: true\n", ""), encoding="utf-8")
+    _, codes = _lint_codes(ws)
+    assert "CONTEXT_FRONTMATTER_FIELD_MISSING" in codes
+
+
+def test_lint_missing_manifest_fails(tmp_path):
+    ws = init_ws(tmp_path)
+    (ws / "MANIFEST.yaml").unlink()
+    r, codes = _lint_codes(ws)
+    assert r.returncode != 0
+    assert any(c in codes for c in ["MANIFEST_MISSING", "REQUIRED_FILE_MISSING"])
+
+
+def test_generated_files_have_no_dashes_in_new_gitignore(tmp_path):
+    ws = init_ws(tmp_path)
+    gi = (ws / ".gitignore").read_text(encoding="utf-8")
+    assert "\u2013" not in gi and "\u2014" not in gi

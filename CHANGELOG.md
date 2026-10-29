@@ -1,8 +1,6 @@
 # Changelog
 
-## Unreleased - 0.5.0a10 (0.5-alpha-9.2)
-
-Not tagged or released yet.
+## 0.5.0a10 (0.5-alpha-9.2) - 2026-10-29
 
 ### Hardening (9.2)
 

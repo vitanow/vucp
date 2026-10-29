@@ -16,7 +16,7 @@ VUCP makes the project workflow visible, repeatable, portable, and reviewable.
 ## Status
 
 ```text
-Release:        0.5.0a10 (0.5-alpha-9.2), unreleased
+Release:        0.5.0a10 (0.5-alpha-9.2)
 Core protocol:  0.4.1
 CLI:            init, lint, graph, doctor, export, dream, patterns, autopilot
 License:        MIT

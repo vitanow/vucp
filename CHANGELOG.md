@@ -1,5 +1,26 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- `patterns --tags` now actually filters: only patterns matching at least one tag are returned; when nothing matches, the CLI prints `No patterns match tags: ...` and returns an empty list (exit 0).
+- Frontmatter parser now reads YAML block lists (`tags:` followed by `- item` lines). Previously such tags were read as empty, so tag matching never worked.
+- `autopilot audit` no longer counts the documented schema/example entry in `_delta/AUTOPILOT_LOG.md` (placeholders like `read|write|...`, the `## Schema` section, or `example: true`).
+- `autopilot audit` now reports `current_mode` read from `AUTOPILOT.md`.
+
+### Changed
+
+- `patterns`: `does_not_apply_to` now overrides positive tag matches (case-insensitive, trimmed).
+- Frontmatter parser only accumulates `- item` block-list lines for known list fields (`tags`, `applies_to`, `does_not_apply_to`, `source_projects`, `semantic_aliases`, `cross_references`), so list-like lines under other keys (e.g. block scalars) are not attached to the wrong key.
+- CI runs the test suite on Python 3.9, 3.11 and 3.13.
+- Defined `patterns --tags` semantics: OR across tags, case-insensitive, whitespace-trimmed, empty entries ignored, duplicates removed. Results ranked by number of matched tags, then score; JSON includes `matched_tags`. An explicit `--tags ""` means no filter (previously it silently fell back to `user_context`). Documented in `patterns --help`, README, and `docs/CROSS_PROJECT_PATTERNS.md`.
+
+### Added
+
+- `tests/test_cli.py` pytest suite (smoke tests for init/lint/doctor/export plus regression tests for both fixes).
+- `requirements-dev.txt` with pytest; CI runs the test suite.
+
 
 ## 0.5-alpha-9.1 — Launch-clean Assisted Autopilot
 

@@ -125,6 +125,8 @@ def parse_manifest_fallback(path:Path)->dict:
     return {"project":project,"pipeline":pipeline}
 
 
+FRONTMATTER_LIST_FIELDS={"tags","applies_to","does_not_apply_to","source_projects","semantic_aliases","cross_references"}
+
 def extract_frontmatter_fields(path:Path)->Dict[str,str]:
     """Minimal parser for YAML frontmatter in CONTEXT.md."""
     fields={}
@@ -133,11 +135,19 @@ def extract_frontmatter_fields(path:Path)->Dict[str,str]:
     if not text.startswith("---"): return fields
     parts=text.split("---",2)
     if len(parts)<3: return fields
+    last=None
     for raw in parts[1].splitlines():
         line=raw.strip()
+        # YAML block list item ("  - value") belongs to the previous key; store comma-joined.
+        if line.startswith("- ") and raw[:1] in (" ","\t","-"):
+            if last not in FRONTMATTER_LIST_FIELDS: continue  # e.g. inside a block scalar or unknown key
+            item=line[2:].strip().strip("\"").strip("'")
+            fields[last]=f"{fields[last]}, {item}" if fields[last] else item
+            continue
         if not line or line.startswith("#") or ":" not in line: continue
         k,v=line.split(":",1)
-        fields[k.strip()]=v.strip().strip("\"").strip("'")
+        last=k.strip()
+        fields[last]=v.strip().strip("\"").strip("'")
     return fields
 
 def is_valid_stage_folder_name(name:str)->bool:
@@ -981,6 +991,25 @@ def parse_frontmatter_list(value:str)->List[str]:
     v=value.strip().strip('[]')
     return [x.strip().strip('"').strip("'") for x in v.split(',') if x.strip()]
 
+def pattern_tag_matches(meta:dict, tags:List[str])->int:
+    hay=[]
+    for k in ["tags","applies_to","source_projects"]:
+        val=meta.get(k,"")
+        if isinstance(val,list): hay += [str(v) for v in val]
+        elif isinstance(val,str): hay += parse_frontmatter_list(val)
+    h={x.lower() for x in hay}
+    h={x.strip().lower() for x in h}
+    return sum(1 for t in tags if t.strip().lower() in h)
+
+
+def pattern_tag_excluded(meta:dict, tags:List[str])->bool:
+    # does_not_apply_to overrides positive matches (case-insensitive, trimmed).
+    val=meta.get("does_not_apply_to","")
+    items=[str(v) for v in val] if isinstance(val,list) else parse_frontmatter_list(str(val))
+    excluded={x.strip().lower() for x in items if x.strip()}
+    return any(t.strip().lower() in excluded for t in tags)
+
+
 def pattern_score(meta:dict, tags:List[str])->int:
     score=0
     hay=[]
@@ -1000,8 +1029,25 @@ def pattern_score(meta:dict, tags:List[str])->int:
 
 
 
+def is_example_entry(item:dict, block:str)->bool:
+    # Template schema/example entries use "a|b|c" placeholders or explicit example: true.
+    if re.search(r"^\s*example:\s*true\s*$", block, re.I|re.M): return True
+    return any("|" in str(item.get(k,"")) for k in ["action_class","risk_level","human_approval"])
+
+
+def current_autopilot_mode(root:Path)->str:
+    ap=root/"AUTOPILOT.md"
+    if ap.exists():
+        m=re.search(r"mode:\s*(SILENT|SURFACE|GUIDED)",read_text_safe(ap),re.I)
+        if m: return m.group(1).upper()
+    return "NOT SET"
+
+
 def extract_autopilot_entries(text:str)->List[dict]:
     entries=[]
+    # Ignore the documented schema section; real entries live under "## Entries".
+    m=re.search(r"^##\s+Entries\s*$", text, re.M)
+    if m and re.search(r"^##\s+Schema\s*$", text[:m.start()], re.M): text=text[m.end():]
     for block in re.split(r"\n---\s*\n", text):
         if "autopilot_action" not in block and "action_class:" not in block:
             continue
@@ -1014,7 +1060,7 @@ def extract_autopilot_entries(text:str)->List[dict]:
             k=k.strip(); v=v.strip().strip('"').strip("'")
             if k in ["type","actor","autopilot_mode","action_class","risk_level","confidence","human_approval","summary","why_it_matters","created_at"]:
                 item[k]=v
-        if item.get("type")=="autopilot_action" or item.get("action_class"):
+        if (item.get("type")=="autopilot_action" or item.get("action_class")) and not is_example_entry(item, block):
             entries.append(item)
     return entries
 
@@ -1064,10 +1110,11 @@ autopilot_log: "_delta/AUTOPILOT_LOG.md"
                 for e in extract_autopilot_entries(read_text_safe(log_file)):
                     e.setdefault("source", str(log_file))
                     entries.append(e)
-        payload={"ok":True,"command":"autopilot","subcommand":"audit","path":str(root),"count":len(entries),"entries":entries[:50]}
+        payload={"ok":True,"command":"autopilot","subcommand":"audit","path":str(root),"current_mode":current_autopilot_mode(root),"count":len(entries),"entries":entries[:50]}
         if args.json:
             out_json(payload)
         else:
+            print(f"Current autopilot mode: {current_autopilot_mode(root)}")
             print(f"Structured autopilot actions: {len(entries)}")
             if not entries:
                 print("No structured autopilot actions recorded yet.")
@@ -1088,7 +1135,10 @@ def patterns(args)->int:
     root=norm(args.path)
     ws=workspace_frontmatter(root)
     p_arg=args.patterns or ws.get("cross_project_patterns","")
-    tags=[t.strip() for t in (args.tags or ws.get("user_context","")).split(',') if t.strip()]
+    # Tag semantics: OR, case-insensitive, trimmed, empty entries ignored, de-duplicated.
+    # An explicit --tags "" means no filter; omitted --tags falls back to user_context.
+    raw_tags=args.tags if args.tags is not None else ws.get("user_context","")
+    tags=list(dict.fromkeys(t.strip().lower() for t in raw_tags.split(',') if t.strip()))
     maxn=int(args.max or ws.get("max_cross_project_patterns","5") or 5)
     candidates=[]
     search_roots=[]
@@ -1111,14 +1161,16 @@ def patterns(args)->int:
             seen.add(md)
             meta=extract_frontmatter_fields(md)
             if str(meta.get("status","")).lower()!="confirmed" and not args.include_candidates: continue
+            if tags and pattern_tag_excluded(meta,tags): continue
+            if tags and pattern_tag_matches(meta,tags)==0: continue
             sc=pattern_score(meta,tags)
-            if sc>0 or not tags:
-                candidates.append({"path":str(md),"score":sc,"title":md.stem,"status":meta.get("status",""),"confidence":meta.get("confidence",""),"tags":meta.get("tags",""),"applies_to":meta.get("applies_to","")})
-    candidates=sorted(candidates,key=lambda x:x["score"],reverse=True)[:maxn]
+            candidates.append({"path":str(md),"matched_tags":pattern_tag_matches(meta,tags),"score":sc,"title":md.stem,"status":meta.get("status",""),"confidence":meta.get("confidence",""),"tags":meta.get("tags",""),"applies_to":meta.get("applies_to","")})
+    candidates=sorted(candidates,key=lambda x:(x["matched_tags"],x["score"]),reverse=True)[:maxn]
     payload={"ok":True,"command":"patterns","path":str(root),"tags":tags,"count":len(candidates),"patterns":candidates}
     if args.json: out_json(payload)
     else:
         print(f"Selected {len(candidates)} cross-project pattern(s)")
+        if tags and not candidates: print(f"No patterns match tags: {', '.join(tags)}")
         for c in candidates: print(f"- {c['title']} ({c['confidence']}) [{c['path']}]")
     return EXIT_SUCCESS
 
@@ -1127,6 +1179,33 @@ def cmd_help(c:str)->str:
     if c=="init": return """\nUsage:\n  vucp init <path> [--project NAME] [--owner NAME] [--language bg|en] [--force] [--json]\n\nCreates a Standard VUCP workspace.\n\nExamples:\n  python vucp_cli_mvp.py init my-project\n  python vucp_cli_mvp.py init my-project --project \"My Project\" --owner \"Zahari\"\n\nSafety:\n  Refuses to write into a non-empty folder unless --force is used.\n\nExit codes:\n  0 success\n  2 invalid arguments\n  3 filesystem error\n"""
     if c=="lint": return """\nUsage:\n  vucp lint <path> [--json]\n\nValidates a VUCP workspace structure.\n\nExamples:\n  python vucp_cli_mvp.py lint my-project\n  python vucp_cli_mvp.py lint my-project --json\n\nExit codes:\n  0 success\n  1 validation failed\n  2 invalid arguments\n"""
     if c=="graph": return """\nUsage:\n  vucp graph <path> [--output PATH] [--json]\n\nGenerates Mermaid workflow graph from MANIFEST.yaml.\n\nExamples:\n  python vucp_cli_mvp.py graph my-project\n  python vucp_cli_mvp.py graph my-project --output _publish/workflow.mmd\n\nExit codes:\n  0 success\n  1 validation failed\n  2 invalid arguments\n  3 filesystem error\n"""
+    if c=="patterns": return """
+Usage:
+  vucp patterns <path> [--patterns PATH] [--tags a,b,c] [--max N] [--include-candidates] [--json]
+
+Selects relevant cross-project patterns.
+
+Tag semantics:
+  - Multiple tags use OR: a pattern is selected if it matches ANY tag.
+  - A pattern's tags, applies_to and source_projects are matched.
+  - does_not_apply_to wins: if ANY given tag is listed in a pattern's
+    does_not_apply_to, the pattern is excluded even if other tags match.
+  - Matching is case-insensitive and whitespace-trimmed ("CLI" == " cli ").
+  - Empty entries are ignored ("cli,,safety" == "cli,safety").
+  - Results are ranked by number of matched tags, then by score
+    (confirmed status, confidence).
+  - If no pattern matches, 0 results are returned (exit 0).
+  - --tags "" (or only separators) means no tag filter.
+  - If --tags is omitted, user_context from WORKSPACE.md is used as tags.
+
+Examples:
+  python vucp_cli_mvp.py patterns my-project --tags cli,safety
+  python vucp_cli_mvp.py patterns my-project --tags "CLI, deployment" --json
+
+Exit codes:
+  0 success
+  2 invalid arguments
+"""
     if c=="autopilot": return """
 Usage:
   vucp autopilot [status|set|audit] <path> [--mode SILENT|SURFACE|GUIDED] [--json]

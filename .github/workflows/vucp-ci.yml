@@ -26,6 +26,16 @@ jobs:
         run: python cli/vucp_cli_mvp.py doctor templates/standard --json
       - name: Export adapters smoke test
         run: python cli/vucp_cli_mvp.py export claude-md templates/standard --json
+      - name: Packaging smoke test (install + vucp --help)
+        run: |
+          python -m venv /tmp/vucp-venv
+          /tmp/vucp-venv/bin/pip install .
+          /tmp/vucp-venv/bin/vucp --help
+          /tmp/vucp-venv/bin/vucp --version
+          /tmp/vucp-venv/bin/vucp init /tmp/smoke-lite --lite
+          /tmp/vucp-venv/bin/vucp doctor /tmp/smoke-lite
+          /tmp/vucp-venv/bin/vucp init /tmp/smoke-full
+          /tmp/vucp-venv/bin/vucp doctor /tmp/smoke-full
       - name: Install test dependencies
         run: pip install -r requirements-dev.txt
       - name: Run tests

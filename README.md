@@ -71,7 +71,7 @@ The human-facing dashboard is:
 _attention/ATTENTION.md
 ```
 
-Autopilot is not blind autonomy. High-risk, destructive, production, credential, publishing, and trusted-memory actions still require approval.
+Autopilot is not blind autonomy, but it is also not a security boundary. Autopilot is policy, not enforcement. AUTOPILOT.md and the modes tell an agent when to stop and ask; they do not technically block anything. Whether a high-risk, destructive, production, credential, publishing, or trusted-memory action is actually stopped depends on your agent runtime and its settings (for example Claude Code hooks and permissions, Cursor agent settings, or the Codex sandbox and approval mode). Configure those for real limits.
 
 ## Lite mode
 
@@ -100,6 +100,14 @@ VUCP_SETUP_GUIDE.ai.md
 Paste it into Codex, Claude Code, Cursor, Windsurf, ChatGPT, or another assistant and ask it to guide you step by step.
 
 ## Quick start
+
+Install the `vucp` command (Python 3.9+), or run the script directly:
+
+```bash
+pipx install .        # or: uv tool install .
+vucp --help
+```
+
 
 ```bash
 python cli/vucp_cli_mvp.py init my-project --project "My Project" --owner "Zahari Vitanov"

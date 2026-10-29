@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vucp"
+version = "0.5.0a9"
+description = "VUCP - file-based context protocol and CLI for AI agent workspaces"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "Zahari Georgiev Vitanov" }]
+dependencies = ["pyyaml>=6.0"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+Homepage = "https://github.com/vitanow/vucp"
+
+[project.scripts]
+vucp = "vucp_cli_mvp:main"
+
+# The CLI is a single module in cli/ so `python cli/vucp_cli_mvp.py` keeps working.
+# All templates used by `init` are embedded in the module, so no package data is needed.
+[tool.setuptools]
+package-dir = { "" = "cli" }
+py-modules = ["vucp_cli_mvp"]

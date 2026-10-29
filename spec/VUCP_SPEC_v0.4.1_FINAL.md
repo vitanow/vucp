@@ -550,7 +550,7 @@ Creates polished human-facing output. Follows brand voice.
 Checks correctness, risks, missing assumptions, and consistency.
 
 ### operator
-Can propose commands. Cannot execute destructive actions without explicit approval.
+Can propose commands. Must not execute destructive actions without explicit approval (a policy rule; technical enforcement depends on the agent runtime).
 ```
 
 ---
@@ -1739,6 +1739,7 @@ Rules:
 - `medium`, `high`, and `critical` stages should read `SAFEGUARDS.md`.
 - `high` and `critical` stages must include rollback.
 - destructive operations must require explicit human approval.
+- note: these rules are instructions to agents. VUCP files do not enforce them; enforcement depends on the agent runtime (hooks, permissions, sandbox).
 - agents should propose commands before execution when production systems are involved.
 
 ---

@@ -11,8 +11,14 @@ The goal is:
 ```text
 AI handles safe routine checks.
 Humans see only what matters.
-Approvals are required for risk, trust, publishing, credentials, and irreversible actions.
+Agents are instructed to ask for approval for risk, trust, publishing, credentials, and irreversible actions.
 ```
+
+## Policy, not enforcement
+
+Autopilot is policy, not enforcement. AUTOPILOT.md and the modes tell an agent when to stop and ask; they do not technically block anything. Whether a high-risk, destructive, production, credential, publishing, or trusted-memory action is actually stopped depends on your agent runtime and its settings (for example Claude Code hooks and permissions, Cursor agent settings, or the Codex sandbox and approval mode). Configure those for real limits.
+
+The VUCP CLI only reads and writes files. `autopilot status` and `audit` report what the files say; they cannot prove an agent followed them.
 
 ## Modes
 
@@ -40,7 +46,10 @@ Each item should explain:
 - lowest-friction next step;
 - attention level: `auto`, `suggest`, `approval`, or `blocked`.
 
-## Always require approval
+## Always ask for approval (instruction to the agent)
+
+Agents should stop and ask before the actions below. This is guidance; enforce it in the runtime if it matters.
+
 
 - high/critical risk work;
 - destructive actions;

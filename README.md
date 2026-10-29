@@ -16,7 +16,7 @@ VUCP makes the project workflow visible, repeatable, portable, and reviewable.
 ## Status
 
 ```text
-Release:        0.5-alpha-9.1
+Release:        0.5.0a10 (0.5-alpha-9.2), unreleased
 Core protocol:  0.4.1
 CLI:            init, lint, graph, doctor, export, dream, patterns, autopilot
 License:        MIT
@@ -165,7 +165,7 @@ schemas/                     Optional schemas, when present
 templates/standard/          General VUCP workspace template
 templates/web-dev/           Web development template
 templates/user/              Private user context and cross-project pattern templates
-docs/                        Positioning, onboarding, Autopilot, adapters, launch docs
+docs/                        Positioning, onboarding, Autopilot, adapters, Lite
 demo-research-to-brief/      Demo workflow
 products/                    Productized kits and examples
 ```

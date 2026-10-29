@@ -420,3 +420,14 @@ def test_generated_files_have_no_dashes_in_new_gitignore(tmp_path):
     ws = init_ws(tmp_path)
     gi = (ws / ".gitignore").read_text(encoding="utf-8")
     assert "\u2013" not in gi and "\u2014" not in gi
+
+
+def test_version_single_source():
+    import re
+    pyproject = (REPO / "pyproject.toml").read_text(encoding="utf-8")
+    pkg = re.search(r'^version = "([^"]+)"', pyproject, re.M).group(1)
+    r = run("--version")
+    assert r.returncode == 0
+    assert r.stdout.startswith(f"vucp {pkg} (")
+    cff = (REPO / "CITATION.cff").read_text(encoding="utf-8")
+    assert f'version: "{pkg}"' in cff
